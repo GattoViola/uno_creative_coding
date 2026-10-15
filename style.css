@@ -1,3 +1,19 @@
+@font-face {
+  font-family: "Unisoft77";
+  src: url("font/Unisoft77LLVarSupsi-[wght].woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Unisoft77";
+  src: url("font/Unisoft77LLVarSupsi-Italic-[wght].woff2");
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+  }
+
 *,
 *::before,
 *::after {
@@ -14,9 +30,12 @@ html {
 }
 
 body {
+  
   min-height: 100dvh;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+
 }
 
 canvas,
@@ -41,9 +60,15 @@ select {
   border: 1px solid black;
 }
 
-.cerchio {
-  width: 500px;
-  height: 500px;
-  background-color: rgb(255, 0, 0);
-  border-radius: 50%;
+  h1 {
+  font-family: "Unisoft77", sans-serif;
+  font-size: clamp(4rem, 16vw, 14rem);
+  line-height: 1;
+  white-space: pre;
+  user-select: none;
+
+}
+
+h1 span {
+  display: inline-block;
 }
