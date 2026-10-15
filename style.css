@@ -39,10 +39,3 @@ select {
   height: 500px;
   background-color: rgb(0, 255, 38);
 }
-
-.cerchio {
-  width: 500px;
-  height: 500px;
-  background-color: rgb(255, 0, 0);
-  border-radius: 50%;
-}
