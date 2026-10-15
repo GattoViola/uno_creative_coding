@@ -1,3 +1,39 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+html {
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+}
+
+body {
+  min-height: 100dvh;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+canvas,
+video,
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
+
 .quadrato {
   width: 900px;
   height: 900px;
@@ -5,3 +41,12 @@
   border: 1px solid black;
 }
 
+<<<<<<< HEAD
+=======
+.cerchio {
+  width: 500px;
+  height: 500px;
+  background-color: rgb(255, 0, 0);
+  border-radius: 50%;
+}
+>>>>>>> 906b58188e7cafdf8241b1a93cf67daef6cdbfab
