@@ -1,18 +1,18 @@
 @font-face {
-  font-family: "Unisoft77";
-  src: url("font/Unisoft77LLVarSupsi-[wght].woff2");
+  font-family: 'Unisoft77';
+  src: url('font/Unisoft77LLVarSupsi-[wght].woff2');
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: "Unisoft77";
-  src: url("font/Unisoft77LLVarSupsi-Italic-[wght].woff2");
+  font-family: 'Unisoft77';
+  src: url('font/Unisoft77LLVarSupsi-Italic-[wght].woff2');
   font-weight: 100 900;
   font-style: italic;
   font-display: swap;
-  }
+}
 
 *,
 *::before,
@@ -30,12 +30,10 @@ html {
 }
 
 body {
-  
   min-height: 100dvh;
   display: grid;
   place-items: center;
   overflow: hidden;
-
 }
 
 canvas,
@@ -55,20 +53,25 @@ select {
 
 .quadrato {
   width: 900px;
-  height: 900px;
+  height: 500px;
   background-color: rgb(0, 255, 38);
   border: 1px solid black;
 }
 
-  h1 {
-  font-family: "Unisoft77", sans-serif;
+h1 {
+  font-family: 'Unisoft77', sans-serif;
   font-size: clamp(4rem, 16vw, 14rem);
   line-height: 1;
   white-space: pre;
   user-select: none;
-
 }
 
 h1 span {
   display: inline-block;
+}
+
+.container-testo {
+  text-align: center;
+  font-family: 'Unisoft77', sans-serif;
+  font-variation-settings: 'wght' 400;
 }
