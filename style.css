@@ -240,12 +240,3 @@ h1 {
 video {
   display: none;
 }
-
-canvas {
-  display: block;
-  width: 640px;
-  max-width: 100%;
-  height: auto;
-  border-radius: 6px;
-  background: #000;
-}
