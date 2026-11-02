@@ -84,64 +84,13 @@ h1 {
 }
 
 .riquadro1 {
-  width: 40%;
-  height: 50%;
+  width: 70%;
+  height: 70%;
   background-color: #6892d1;
   display: flex;
   flex-wrap: wrap;
 }
 
-.riquadro2 {
-  width: 60%;
-  height: 50%;
-  background-color: #a0c6ff;
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.riquadro3 {
-  width: 40%;
-  height: 50%;
-  background-color: #a0c6ff;
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.riquadro4 {
-  width: 60%;
-  height: 50%;
-  background-color: #6892d1;
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.riquadro2-1 {
-  width: 50%;
-  height: 50%;
-  background-color: #a0c6ff;
-  border-right: 2px solid #044ab3;
-}
-
-.riquadro2-2 {
-  width: 50%;
-  height: 50%;
-  background-color: #3f6aa9;
-}
-
-.riquadro2-3 {
-  width: 100%;
-  height: 50%;
-  background-color: #a0c6ff;
-  border-top: 2px solid #044ab3;
-}
-
-.riquadro3-1 {
-  width: 100%;
-  height: 60%;
-  background-color: #3f6aa9;
-  align-self: flex-end;
-  border-top: 2px solid #044ab3;
-}
 
 #testo-1 {
   width: 100%;
