@@ -82,7 +82,7 @@ h1 {
 }
 
 .container-principale > * {
-  border: 1px solid #044ab3;
+  border: 1px solid #000000;
 }
 
 .riquadro1 {
@@ -242,6 +242,7 @@ h1 {
 video {
   display: none;
 }
+
 
 canvas {
   display: block;
