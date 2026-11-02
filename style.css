@@ -231,7 +231,7 @@ h1 {
   font-weight: regular;
 }
 
-/* .stage {
+.stage {
   width: 50vw;
   height: 100vh;
   box-sizing: border-box;
@@ -247,4 +247,4 @@ canvas {
   max-width: 100%;
   height: auto;
   background: #000;
-} */
+} 
