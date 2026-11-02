@@ -68,8 +68,10 @@ h1 {
 }
 
 .container-principale {
-  width: 50vw;
-  height: 100vh;
+  /* width: 50vw; */
+  width: 1080px;
+  height: 1080px;
+  aspect-ratio: 1/1;
   margin: 0 auto;
   display: flex;
   justify-content: center;
@@ -231,7 +233,7 @@ h1 {
   font-weight: regular;
 }
 
-.stage {
+/* .stage {
   width: 50vw;
   height: 100vh;
   box-sizing: border-box;
@@ -243,9 +245,8 @@ video {
 
 canvas {
   display: block;
-  width: 640px;
+  width: 50vw;
   max-width: 100%;
   height: auto;
-  border-radius: 6px;
   background: #000;
-}
+} */
