@@ -3,19 +3,41 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
+    <title>UNI - UNO GAME</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <div class="quadrato"></div>
-    <div class="cerchio"></div>
-
-    <h1>Unisoft77</h1>
-
-    <div class="container-testo">
-      <p>This is a simple test paragraph.</p>
+    <div class="stage">
+      <video id="video" autoplay playsinline width="640" height="480"></video>
+      <canvas id="canvas" width="50vw" height="100vh"></canvas>
+    </div>
+    <div class="container-principale" id="container-principale" contenteditable="true" spellcheck="false">
+      <div class="riquadro1">
+        <p id="testo-1">D</p>
+      </div>
+      <div class="riquadro2">
+        <div class="riquadro2-1"></div>
+        <div class="riquadro2-2"></div>
+        <div class="riquadro2-3"></div>
+      </div>
+      <div class="riquadro3">
+        <div class="riquadro3-1"></div>
+        <div class="riquadro3-2"></div>
+      </div>
+      <div class="riquadro4">
+        <div class="riquadro4-1"></div>
+      </div>
     </div>
 
+    <script
+      src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js"
+      crossorigin="anonymous"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1675466124/drawing_utils.js"
+      crossorigin="anonymous"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js"
+      crossorigin="anonymous"></script>
     <script src="script.js"></script>
   </body>
 </html>
