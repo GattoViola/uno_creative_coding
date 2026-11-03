@@ -25,13 +25,31 @@
   --colore-verde: #1f9e4a;
   --colore-blu: var(--blu);
 
+  /* colore d'accento: segue il colore dell'ultima carta giocata (html[data-colore]) */
+  --accento: var(--colore-blu);
+  --su-accento: var(--bianco);
+  --durata-colore: 400ms ease;
+
   --carattere: 'Unisoft77', system-ui, sans-serif;
 
   --peso-lettera: 700;
   --stile-lettera: normal;
-  --colore-lettera: #fff;
+  --colore-lettera: var(--su-accento);
 
   --durata: 300ms ease;
+}
+
+:root[data-colore='rosso'] {
+  --accento: var(--colore-rosso);
+}
+
+:root[data-colore='giallo'] {
+  --accento: var(--colore-giallo);
+  --su-accento: var(--sfondo);
+}
+
+:root[data-colore='verde'] {
+  --accento: var(--colore-verde);
 }
 
 *,
@@ -140,7 +158,8 @@ canvas {
 
 .riquadro-poster {
   grid-area: poster;
-  background: var(--blu);
+  background: var(--accento);
+  transition: background-color var(--durata-colore);
   border-radius: var(--raggio);
   view-transition-name: riquadro-poster;
 }
@@ -148,8 +167,9 @@ canvas {
 .riquadro-logo {
   grid-area: logo;
   background: var(--bianco);
-  color: var(--blu);
+  color: var(--accento);
   border-radius: var(--raggio);
+  transition: color var(--durata-colore);
   view-transition-name: riquadro-logo;
 }
 
@@ -223,7 +243,7 @@ canvas {
 
 .linee-orizzontali line,
 .linee-verticali line {
-  stroke: var(--bianco-tenue);
+  stroke: color-mix(in srgb, var(--su-accento) 85%, transparent);
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
   shape-rendering: crispEdges;
@@ -233,7 +253,7 @@ canvas {
 .linee-verticali text {
   font-family: var(--carattere);
   font-size: 25px;
-  fill: rgb(255 255 255 / 0.9);
+  fill: color-mix(in srgb, var(--su-accento) 90%, transparent);
 }
 
 .nome-linea,
@@ -278,7 +298,11 @@ canvas {
   height: 1.5em;
   padding: 0 0.4em 0 0.29em;
   border-radius: 0.19em 0.19em 0 0;
-  background: var(--blu);
+  background: var(--accento);
+  color: var(--su-accento);
+  transition:
+    background-color var(--durata-colore),
+    color var(--durata-colore);
   font-size: 1.89em;
   font-weight: 300;
   line-height: 1;
@@ -321,7 +345,8 @@ canvas {
 }
 
 .turni [aria-current] {
-  background: var(--blu);
+  background: var(--accento);
+  color: var(--su-accento);
 }
 
 .grafico {
@@ -365,7 +390,8 @@ canvas {
 }
 
 .linea-peso {
-  stroke: var(--blu);
+  stroke: var(--accento);
+  transition: stroke var(--durata-colore);
 }
 
 .punti-peso circle {
@@ -392,24 +418,8 @@ canvas {
 
 .colore-attuale {
   height: 100%;
-  background: var(--blu);
-  transition: background-color 400ms ease;
-}
-
-.colore-attuale[data-colore='rosso'] {
-  background: var(--colore-rosso);
-}
-
-.colore-attuale[data-colore='giallo'] {
-  background: var(--colore-giallo);
-}
-
-.colore-attuale[data-colore='verde'] {
-  background: var(--colore-verde);
-}
-
-.colore-attuale[data-colore='blu'] {
-  background: var(--colore-blu);
+  background: var(--accento);
+  transition: background-color var(--durata-colore);
 }
 
 .testo-nascosto {
@@ -476,6 +486,10 @@ canvas {
 @media (prefers-reduced-motion: reduce) {
   .lettera,
   .gruppo-centrato,
+  .riquadro-poster,
+  .riquadro-logo,
+  .titolo-giocatore,
+  .linea-peso,
   .colore-attuale {
     transition: none;
   }

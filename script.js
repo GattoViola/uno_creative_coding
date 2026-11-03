@@ -486,11 +486,14 @@
       console.warn('[UniDashboard] colore sconosciuto:', colore);
       return;
     }
+    // il colore d'accento di tutta la dashboard (style.css, :root[data-colore])
+    document.documentElement.dataset.colore = nome;
     quadratoColore.dataset.colore = nome;
     testoColore.textContent = nome;
   }
 
   function azzeraColore() {
+    delete document.documentElement.dataset.colore;
     delete quadratoColore.dataset.colore;
     testoColore.textContent = 'blu';
   }
