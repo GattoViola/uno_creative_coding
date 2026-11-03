@@ -8,12 +8,23 @@
   const SATURAZIONE_MIN = 0.4;
   const LUMINOSITA_MIN = 0.25;
   const SIMBOLO_MIN = 0.0005; // area minima del simbolo, rispetto al fotogramma
-  const FOTOGRAMMI_STABILI = 15; // circa mezzo secondo fermo prima di leggere
-  const ATTESA_RIPROVA = 700; // ms tra una lettura fallita e la successiva
-  const LATO_LETTURA = 160; // il simbolo viene ingrandito a questo lato per l'OCR
-  const RITOCCHI = [0, -12, 12]; // gradi attorno all'orientamento stimato (l'OCR regge circa ±15°)
-  const FIDUCIA_MIN = 60;
-  const FIDUCIA_SICURA = 88; // oltre questa smette di provare altre rotazioni
+  const FOTOGRAMMI_STABILI = 10; // fermo per un terzo di secondo prima di leggere
+  // la pila è stata toccata se tra due fotogrammi cambia la luce di abbastanza punti della zona
+  const SALTO_LUCE = 40; // differenza di luminosità (0-255) per dire che un punto è cambiato
+  const QUOTA_MOVIMENTO = 0.04; // quota di punti cambiati per dire che qualcosa si è mosso
+  const LATO_LETTURA = 160; // il simbolo viene ingrandito a questo lato per il confronto
+
+  // il simbolo si confronta con i glifi veri del font, ruotati e in più pesi
+  const FONT_CARTE = 'Unisoft77';
+  const PESI_CARTE = [300, 500, 700, 900];
+  const LATO_MODELLO = 32;
+  const PASSO_ROTAZIONE = 5; // gradi
+  const SOMIGLIANZA_MIN = 0.55; // sovrapposizione minima (0-1) tra simbolo e glifo
+  const PARI_MERITO = 0.03; // sotto questa differenza vince il glifo più dritto (6 e 9)
+
+  // una lettura vale solo se è uguale in almeno 4 degli ultimi 5 fotogrammi
+  const VOTI = 5;
+  const MAGGIORANZA = 4;
 
   // la "/" si riconosce dalla forma: un solo tratto molto allungato che riempie il suo rettangolo
   // (nel font: "/" allungamento ≥ 18 e riempimento ≈ 0.9, "1" riempimento ≤ 0.6)
@@ -22,6 +33,8 @@
 
   const COLORI = ['rosso', 'giallo', 'verde', 'blu'];
   const GLIFI_AMMESSI = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+2', '/'];
+  // al centro della carta +2 c'è solo il + (il "+2" intero è negli angoli)
+  const SIMBOLO_AL_CENTRO = { '+2': '+' };
 
   const trova = (id) => document.getElementById(id);
   const contenitore = trova('webcam');
@@ -33,14 +46,15 @@
   const ctxLettura = lettura.getContext('2d', { willReadFrequently: true });
 
   let flusso = null;
-  let lettore = null;
-  let occupato = false;
-  let prossimoTentativo = 0;
+  let modelli = null; // [{ testo, angolo, maschera }]
 
   let precedente = null;
   let conteggio = 0;
-  let ultimaLetta = null; // l'ultimo simbolo passato all'OCR con successo
+  let voti = [];
   let ultimaGiocata = null; // { simbolo, testo } dell'ultima carta giocata
+  let disturbato = true; // la pila è stata toccata dopo l'ultima giocata
+  let lucePrecedente = null;
+  let movimento = 0; // quota di punti della zona cambiati dall'ultimo fotogramma
   let coloreStabile = null;
 
   function coloreDelPixel(r, g, b) {
@@ -74,12 +88,23 @@
     const colonne = Math.ceil(larghezzaZona / PASSO);
     const righe = Math.ceil(altezzaZona / PASSO);
     const griglia = new Int8Array(colonne * righe);
+    const luce = new Uint8Array(colonne * righe);
     for (let gy = 0; gy < righe; gy += 1) {
       for (let gx = 0; gx < colonne; gx += 1) {
         const i = (gy * PASSO * larghezzaZona + gx * PASSO) * 4;
         griglia[gy * colonne + gx] = coloreDelPixel(data[i], data[i + 1], data[i + 2]);
+        luce[gy * colonne + gx] = (data[i] * 3 + data[i + 1] * 6 + data[i + 2]) / 10;
       }
     }
+
+    let cambiati = 0;
+    if (lucePrecedente?.length === luce.length) {
+      for (let i = 0; i < luce.length; i += 1) {
+        if (Math.abs(luce[i] - lucePrecedente[i]) > SALTO_LUCE) cambiati += 1;
+      }
+    }
+    movimento = cambiati / luce.length;
+    lucePrecedente = luce;
 
     const visitato = new Uint8Array(griglia.length);
     const pila = new Int32Array(griglia.length);
@@ -129,25 +154,22 @@
       return tocca ? null : m;
     }
 
+    // l'area minima vale per il pezzo principale, i pezzi vicini (il + del +2) possono essere più piccoli
     const minimo = (SIMBOLO_MIN * canvas.width * canvas.height) / (PASSO * PASSO);
     const buchi = [];
     for (let inizio = 0; inizio < griglia.length; inizio += 1) {
       if (griglia[inizio] >= 0 || visitato[inizio]) continue;
       const buco = esplora(inizio);
-      if (buco && buco.n >= minimo) buchi.push(buco);
+      if (buco && buco.n >= 6) buchi.push(buco);
     }
-    if (!buchi.length) return null;
+    if (!buchi.some((b) => b.n >= minimo)) return null;
 
-    // il pezzo più grande, più quelli vicini dello stesso colore (il + del +2)
-    buchi.sort((a, b) => b.n - a.n);
-    const [principale] = buchi;
-    const gruppo = buchi.filter(
-      (b) =>
-        b.colore === principale.colore &&
-        b.n >= principale.n * 0.15 &&
-        Math.hypot(b.cx - principale.cx, b.cy - principale.cy) < principale.lato * 1.5,
-    );
+    // il simbolo al centro è il pezzo più grande (gli indici negli angoli sono più piccoli)
+    const principale = buchi.reduce((a, b) => (b.n > a.n ? b : a));
+    return descriviGruppo([principale]);
+  }
 
+  function descriviGruppo(gruppo) {
     const minX = Math.min(...gruppo.map((b) => b.minX));
     const maxX = Math.max(...gruppo.map((b) => b.maxX));
     const minY = Math.min(...gruppo.map((b) => b.minY));
@@ -155,7 +177,7 @@
     const forma = misuraForma(gruppo.flatMap((b) => b.celle));
 
     return {
-      colore: COLORI[principale.colore],
+      colore: COLORI[gruppo[0].colore],
       cx: (minX + maxX) / 2,
       cy: (minY + maxY) / 2,
       lato: Math.hypot(maxX - minX, maxY - minY) + PASSO * 2,
@@ -224,25 +246,23 @@
     );
   }
 
-  // ritaglia il simbolo girato di un angolo e lo lascia nero su fondo bianco
-  function preparaLettura(simbolo, angolo) {
+  // ritaglia il simbolo e lo lascia in bianco e nero: 1 dove c'è il simbolo
+  function ritagliaSimbolo(simbolo) {
     const lato = LATO_LETTURA;
     lettura.width = lato;
     lettura.height = lato;
 
     const scala = lato / (simbolo.lato * 1.3);
-    ctxLettura.save();
     ctxLettura.fillStyle = '#000';
     ctxLettura.fillRect(0, 0, lato, lato);
+    ctxLettura.save();
     ctxLettura.translate(lato / 2, lato / 2);
-    ctxLettura.rotate(-angolo);
     ctxLettura.scale(scala, scala);
     ctxLettura.translate(-simbolo.cx, -simbolo.cy);
     ctxLettura.drawImage(canvas, 0, 0);
     ctxLettura.restore();
 
-    const immagine = ctxLettura.getImageData(0, 0, lato, lato);
-    const { data } = immagine;
+    const { data } = ctxLettura.getImageData(0, 0, lato, lato);
     const colore = COLORI.indexOf(simbolo.colore);
     const inchiostro = new Uint8Array(lato * lato);
     for (let i = 0; i < inchiostro.length; i += 1) {
@@ -264,27 +284,91 @@
       if (i >= lato) pila.push(i - lato);
       if (i < inchiostro.length - lato) pila.push(i + lato);
     }
-
-    for (let i = 0; i < inchiostro.length; i += 1) {
-      const valore = inchiostro[i] ? 0 : 255;
-      data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = valore;
-      data[i * 4 + 3] = 255;
-    }
-
-    const pagina = document.createElement('canvas');
-    pagina.width = lato + 40;
-    pagina.height = lato + 40;
-    const ctxPagina = pagina.getContext('2d');
-    ctxPagina.fillStyle = '#fff';
-    ctxPagina.fillRect(0, 0, pagina.width, pagina.height);
-    ctxPagina.putImageData(immagine, 20, 20);
-    return pagina;
+    return inchiostro;
   }
 
-  async function leggiSimbolo(pagina) {
-    const { data } = await lettore.recognize(pagina);
-    const testo = data.text.replace(/\s/g, '');
-    return { testo, fiducia: data.confidence };
+  function puntiDi(maschera, lato) {
+    const punti = [];
+    for (let i = 0; i < maschera.length; i += 1) {
+      if (maschera[i]) punti.push(i % lato, Math.floor(i / lato));
+    }
+    return punti;
+  }
+
+  // ruota i punti e li fa stare in un quadrato di LATO_MODELLO, centrati: così conta solo la forma
+  function normalizza(punti, angolo) {
+    const cos = Math.cos(angolo);
+    const sin = Math.sin(angolo);
+    const xs = new Float32Array(punti.length / 2);
+    const ys = new Float32Array(punti.length / 2);
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (let i = 0; i < xs.length; i += 1) {
+      const x = punti[i * 2];
+      const y = punti[i * 2 + 1];
+      xs[i] = x * cos - y * sin;
+      ys[i] = x * sin + y * cos;
+      minX = Math.min(minX, xs[i]);
+      maxX = Math.max(maxX, xs[i]);
+      minY = Math.min(minY, ys[i]);
+      maxY = Math.max(maxY, ys[i]);
+    }
+
+    const ultimo = LATO_MODELLO - 1;
+    const scala = ultimo / Math.max(maxX - minX, maxY - minY, 1);
+    const dx = (ultimo - (maxX - minX) * scala) / 2;
+    const dy = (ultimo - (maxY - minY) * scala) / 2;
+    const maschera = new Uint8Array(LATO_MODELLO * LATO_MODELLO);
+    for (let i = 0; i < xs.length; i += 1) {
+      const x = Math.round((xs[i] - minX) * scala + dx);
+      const y = Math.round((ys[i] - minY) * scala + dy);
+      maschera[y * LATO_MODELLO + x] = 1;
+    }
+    return maschera;
+  }
+
+  async function preparaModelli() {
+    const lato = 220;
+    const foglio = document.createElement('canvas');
+    foglio.width = lato;
+    foglio.height = lato;
+    const ctxFoglio = foglio.getContext('2d', { willReadFrequently: true });
+    const nuovi = [];
+
+    for (const peso of PESI_CARTE) {
+      await document.fonts.load(`${peso} 160px "${FONT_CARTE}"`, GLIFI_AMMESSI.join(''));
+      for (const testo of GLIFI_AMMESSI) {
+        ctxFoglio.clearRect(0, 0, lato, lato);
+        ctxFoglio.font = `${peso} 120px "${FONT_CARTE}"`;
+        ctxFoglio.textAlign = 'center';
+        ctxFoglio.textBaseline = 'middle';
+        ctxFoglio.fillText(SIMBOLO_AL_CENTRO[testo] ?? testo, lato / 2, lato / 2);
+
+        const { data } = ctxFoglio.getImageData(0, 0, lato, lato);
+        const maschera = new Uint8Array(lato * lato);
+        for (let i = 0; i < maschera.length; i += 1) maschera[i] = data[i * 4 + 3] > 128 ? 1 : 0;
+        const punti = puntiDi(maschera, lato);
+
+        for (let gradi = 0; gradi < 360; gradi += PASSO_ROTAZIONE) {
+          const angolo = (gradi * Math.PI) / 180;
+          nuovi.push({ testo, angolo, maschera: normalizza(punti, angolo) });
+        }
+      }
+    }
+    modelli = nuovi;
+  }
+
+  // sovrapposizione tra due maschere: 1 identiche, 0 niente in comune
+  function somiglianza(a, b) {
+    let comune = 0;
+    let unione = 0;
+    for (let i = 0; i < a.length; i += 1) {
+      comune += a[i] & b[i];
+      unione += a[i] | b[i];
+    }
+    return unione ? comune / unione : 0;
   }
 
   function eSlash(simbolo) {
@@ -295,61 +379,55 @@
     );
   }
 
-  // le cifre sono più alte che larghe, il +2 è più largo che alto: si raddrizza l'asse
-  // e si provano i due versi (la carta può essere capovolta), con piccoli ritocchi
-  function angoliDaProvare(simbolo) {
-    const verticale = simbolo.asse - Math.PI / 2;
-    const orizzontale = simbolo.asse;
-    const basi = simbolo.pezzi > 1 ? [orizzontale, verticale] : [verticale, orizzontale];
-    // a parità di lettura vince il verso più dritto rispetto alla camera (6 e 9 si somigliano capovolti)
+  function riconosci(simbolo) {
+    if (eSlash(simbolo)) return '/';
+
+    const punti = puntiDi(ritagliaSimbolo(simbolo), LATO_LETTURA);
+    if (punti.length < 40) return null;
+    const maschera = normalizza(punti, 0);
+
+    // per ogni glifo, la rotazione che gli somiglia di più
+    const migliori = new Map();
+    for (const modello of modelli) {
+      const punteggio = somiglianza(maschera, modello.maschera);
+      if (punteggio > (migliori.get(modello.testo)?.punteggio ?? -1)) {
+        migliori.set(modello.testo, { testo: modello.testo, angolo: modello.angolo, punteggio });
+      }
+    }
+
+    // a pari merito vince il glifo più dritto rispetto alla camera (un 6 capovolto è un 9)
     const storto = (angolo) => Math.abs(Math.atan2(Math.sin(angolo), Math.cos(angolo)));
-    return basi.map((base) =>
-      [0, Math.PI]
-        .flatMap((verso) => RITOCCHI.map((g) => base + verso + (g * Math.PI) / 180))
-        .sort((a, b) => storto(a) - storto(b)),
-    );
+    const classifica = [...migliori.values()].sort((a, b) => b.punteggio - a.punteggio);
+    const [primo] = classifica;
+    if (primo.punteggio < SOMIGLIANZA_MIN) return null;
+    const scelto = classifica
+      .filter((c) => primo.punteggio - c.punteggio < PARI_MERITO)
+      .sort((a, b) => storto(a.angolo) - storto(b.angolo))[0];
+    return scelto.testo;
   }
 
-  async function riconosci(simbolo) {
-    if (eSlash(simbolo)) return { testo: '/', fiducia: 100 };
-
-    // prima l'orientamento più probabile, l'altro solo se il primo non dà niente
-    for (const angoli of angoliDaProvare(simbolo)) {
-      let migliore = null;
-      for (const angolo of angoli) {
-        const letto = await leggiSimbolo(preparaLettura(simbolo, angolo));
-        const valido = GLIFI_AMMESSI.includes(letto.testo) && letto.testo !== '/';
-        if (valido && (!migliore || letto.fiducia > migliore.fiducia)) migliore = letto;
-        if (migliore?.fiducia >= FIDUCIA_SICURA) return migliore;
-      }
-      if (migliore?.fiducia >= FIDUCIA_MIN) return migliore;
+  function votato() {
+    if (voti.length < VOTI) return null;
+    const conti = new Map();
+    for (const voto of voti) conti.set(voto, (conti.get(voto) ?? 0) + 1);
+    for (const [testo, conto] of conti) {
+      if (testo && conto >= MAGGIORANZA) return testo;
     }
     return null;
   }
 
-  async function leggiCarta(simbolo) {
-    occupato = true;
-    try {
-      const letto = await riconosci(simbolo);
-      if (letto) {
-        ultimaLetta = simbolo;
-        // stesso simbolo nello stesso punto: è la stessa carta che si è solo mossa un po'
-        const stessa =
-          ultimaGiocata?.testo === letto.testo && stessoSimbolo(simbolo, ultimaGiocata.simbolo, 0.3);
-        if (stessa) return;
+  // una carta conta solo se la pila è stata toccata (mano, carta in volo) dopo l'ultima giocata:
+  // così una rilettura diversa della stessa carta non diventa un turno in più
+  function decidi(simbolo, testo) {
+    if (!disturbato) return;
+    disturbato = false;
 
-        ultimaGiocata = { simbolo, testo: letto.testo };
-        console.debug(`[UniWebcam] carta ${letto.testo} ${simbolo.colore} (${Math.round(letto.fiducia)}%)`);
-        window.dispatchEvent(
-          new CustomEvent('carta-rilevata', { detail: { carta: letto.testo, colore: simbolo.colore } }),
-        );
-      } else {
-        console.debug('[UniWebcam] simbolo non leggibile, riprovo');
-        prossimoTentativo = performance.now() + ATTESA_RIPROVA;
-      }
-    } finally {
-      occupato = false;
-    }
+    const stessa = ultimaGiocata?.testo === testo && stessoSimbolo(simbolo, ultimaGiocata.simbolo, 0.3);
+    ultimaGiocata = { simbolo, testo };
+    if (stessa) return;
+
+    console.debug(`[UniWebcam] carta ${testo} ${simbolo.colore}`);
+    window.dispatchEvent(new CustomEvent('carta-rilevata', { detail: { carta: testo, colore: simbolo.colore } }));
   }
 
   function ciclo() {
@@ -358,33 +436,25 @@
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const simbolo = trovaSimbolo();
 
-    conteggio = stessoSimbolo(simbolo, precedente, 0.15) ? conteggio + 1 : 0;
+    if (stessoSimbolo(simbolo, precedente, 0.15)) conteggio += 1;
+    else {
+      conteggio = 0;
+      voti = [];
+    }
     precedente = simbolo;
-    if (simbolo && conteggio >= FOTOGRAMMI_STABILI) coloreStabile = simbolo.colore;
 
-    const pronto =
-      simbolo &&
-      lettore &&
-      !occupato &&
-      conteggio >= FOTOGRAMMI_STABILI &&
-      performance.now() >= prossimoTentativo &&
-      !stessoSimbolo(simbolo, ultimaLetta, 0.1);
-    if (pronto) leggiCarta(simbolo);
+    if (movimento > QUOTA_MOVIMENTO) disturbato = true;
+
+    if (simbolo && conteggio >= FOTOGRAMMI_STABILI) {
+      coloreStabile = simbolo.colore;
+      if (modelli) {
+        voti = [...voti, riconosci(simbolo)].slice(-VOTI);
+        const testo = votato();
+        if (testo) decidi(simbolo, testo);
+      }
+    }
 
     requestAnimationFrame(ciclo);
-  }
-
-  async function preparaLettore() {
-    if (typeof Tesseract === 'undefined') {
-      console.warn('[UniWebcam] Tesseract non caricato: la webcam legge solo il colore.');
-      return;
-    }
-    const nuovo = await Tesseract.createWorker('eng');
-    await nuovo.setParameters({
-      tessedit_char_whitelist: GLIFI_AMMESSI.join(''),
-      tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
-    });
-    lettore = nuovo;
   }
 
   async function avvia() {
@@ -413,15 +483,15 @@
     contenitore.hidden = true;
   }
 
-  preparaLettore().catch((errore) => console.warn('[UniWebcam] OCR non disponibile:', errore));
+  preparaModelli().catch((errore) => console.warn('[UniWebcam] glifi del font non pronti:', errore));
   avvia();
 
   window.UniWebcam = Object.freeze({
     avvia,
     ferma,
     coloreRilevato: () => coloreStabile,
-    // per tarare: mostra cosa vede l'OCR (la carta raddrizzata in bianco e nero)
-    anteprimaLettura: (angolo = 0) => (precedente ? preparaLettura(precedente, angolo).toDataURL() : null),
+    // per tarare: cosa viene letto adesso
+    letturaAttuale: () => (precedente && modelli ? riconosci(precedente) : null),
     ultimoSimbolo: () => precedente,
   });
 })();

@@ -45,7 +45,6 @@
 
 :root[data-colore='giallo'] {
   --accento: var(--colore-giallo);
-  --su-accento: var(--sfondo);
 }
 
 :root[data-colore='verde'] {

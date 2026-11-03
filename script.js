@@ -592,20 +592,29 @@
     parti.puntiPeso = creaSvg('g', { class: 'punti-peso', 'aria-hidden': 'true' }, contenuto);
   }
 
+  // curva monotona: passa per i punti senza mai andare oltre (niente gobbe sopra il 900),
+  // e dove due punti hanno lo stesso valore il tratto resta dritto
   function curvaMorbida(punti) {
     if (punti.length === 0) return '';
     let percorso = `M${arrotonda(punti[0].x)} ${arrotonda(punti[0].y)}`;
 
+    const pendenze = punti.slice(1).map((a, i) => (a.y - punti[i].y) / (a.x - punti[i].x));
+    const tangenti = punti.map((_, i) => {
+      const prima = pendenze[i - 1] ?? pendenze[i];
+      const dopo = pendenze[i] ?? pendenze[i - 1];
+      if (prima * dopo <= 0) return 0;
+      return (2 * prima * dopo) / (prima + dopo);
+    });
+
     for (let i = 0; i < punti.length - 1; i += 1) {
-      const prima = punti[i - 1] || punti[i];
       const da = punti[i];
       const a = punti[i + 1];
-      const dopo = punti[i + 2] || a;
+      const terzo = (a.x - da.x) / 3;
 
-      const controllo1x = da.x + (a.x - prima.x) / 6;
-      const controllo1y = da.y + (a.y - prima.y) / 6;
-      const controllo2x = a.x - (dopo.x - da.x) / 6;
-      const controllo2y = a.y - (dopo.y - da.y) / 6;
+      const controllo1x = da.x + terzo;
+      const controllo1y = da.y + tangenti[i] * terzo;
+      const controllo2x = a.x - terzo;
+      const controllo2y = a.y - tangenti[i + 1] * terzo;
 
       percorso += ` C${arrotonda(controllo1x)} ${arrotonda(controllo1y)}`;
       percorso += ` ${arrotonda(controllo2x)} ${arrotonda(controllo2y)}`;
