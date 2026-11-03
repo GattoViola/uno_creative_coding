@@ -71,6 +71,11 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* la carta "/" mette in corsivo tutto il testo, non solo il glifo del poster */
+:root[data-corsivo] body {
+  font-style: italic;
+}
+
 h1,
 h2,
 dl,

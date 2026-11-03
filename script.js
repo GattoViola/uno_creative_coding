@@ -371,6 +371,8 @@
     if (corsivo !== undefined) {
       stato.corsivo = Boolean(corsivo);
       el.poster.style.setProperty('--stile-lettera', stato.corsivo ? 'italic' : 'normal');
+      // con il corsivo attivo diventa italic tutto il testo della pagina (style.css, :root[data-corsivo])
+      document.documentElement.toggleAttribute('data-corsivo', stato.corsivo);
       scriviTesto('glyph-italic', testoOnOff(stato.corsivo));
     }
 
@@ -741,9 +743,11 @@
     }
 
     const colore = nomeColore(coloreCarta) ?? window.UniWebcam?.coloreRilevato() ?? partita.coloreManuale;
+    // la "/" accende e spegne solo il corsivo: il peso resta com'è
+    const slash = carta === '/';
     const stessoColore = colore === partita.colore;
     if (colore) {
-      partita.gradino = stessoColore ? Math.min(partita.gradino + 1, PESI.length - 1) : 0;
+      if (!slash) partita.gradino = stessoColore ? Math.min(partita.gradino + 1, PESI.length - 1) : 0;
       partita.colore = colore;
     } else {
       console.warn('[UniDashboard] nessun colore rilevato: inquadra la carta o premi r/y/g/b.');
@@ -751,12 +755,12 @@
     partita.turno += 1;
 
     const [peso, nomePeso] = PESI[partita.gradino];
-    const corsivo = carta === '/' ? !stato.corsivo : stato.corsivo;
+    const corsivo = slash ? !stato.corsivo : stato.corsivo;
 
     const eventi = [];
     if (!colore) eventi.push('no color');
-    else eventi.push(stessoColore ? `weight++ ${nomePeso}` : `reset ${nomePeso}`);
-    if (carta === '/') eventi.push(`italic ${testoOnOff(corsivo)}`);
+    else if (!slash) eventi.push(stessoColore ? `weight++ ${nomePeso}` : `reset ${nomePeso}`);
+    if (slash) eventi.push(`italic ${testoOnOff(corsivo)}`);
 
     const dati = {
       turno: partita.turno,
