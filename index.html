@@ -3,43 +3,278 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>UNI - UNO GAME</title>
+    <meta name="color-scheme" content="dark" />
+
+    <title>UNI</title>
+
+    <link rel="preload" href="font/Unisoft77LLVarSupsi-[wght].woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="style.css" />
   </head>
-  <body>
 
-    <!-- <div class="stage">
-      <video id="video" autoplay playsinline width="640" height="480"></video>
-      <canvas id="canvas" width="50vw" height="100vh"></canvas>
-    </div> -->
-    
-    <div class="container-principale" id="container-principale" contenteditable="true" spellcheck="false">
-      <div class="riquadro1">
-        <p id="testo-1">D</p>
+  <body>
+    <div class="pagina" id="app-shell">
+      <div class="webcam" id="webcam" hidden>
+        <video id="video" autoplay playsinline muted width="640" height="480"></video>
+        <canvas id="canvas" width="640" height="480"></canvas>
       </div>
-      <div class="riquadro2">
-        <div class="riquadro2-1"></div>
-        <div class="riquadro2-2"></div>
-        <div class="riquadro2-3"></div>
-      </div>
-      <div class="riquadro3">
-        <div class="riquadro3-1"></div>
-        <div class="riquadro3-2"></div>
-      </div>
-      <div class="riquadro4">
-        <div class="riquadro4-1"></div>
+
+      <div class="zona-dashboard">
+        <main class="dashboard" id="dashboard">
+          <section
+            class="riquadro riquadro-poster"
+            id="container-principale"
+            data-riquadro="poster"
+            aria-label="Technical view of the current glyph">
+            <svg
+              class="disegno-lettera"
+              id="disegno-lettera"
+              viewBox="-750 -1113 1500 1500"
+              preserveAspectRatio="xMidYMid meet"
+              role="img"
+              aria-labelledby="titolo-poster">
+              <title id="titolo-poster">Glyph A, weight 700</title>
+
+              <g class="gruppo-centrato">
+                <text class="lettera" id="testo-1" x="0" y="0" font-size="1000">A</text>
+              </g>
+
+              <g class="linee-orizzontali" aria-hidden="true">
+                <line x1="-718" x2="693" y1="-963" y2="-963" />
+                <text class="nome-linea" x="-718" y="-932">Typo Ascender</text>
+                <text class="valore-linea" x="693" y="-932">963</text>
+
+                <line x1="-718" x2="693" y1="-726" y2="-726" />
+                <text class="nome-linea" x="-718" y="-695">Cap Height</text>
+                <text class="valore-linea" x="693" y="-695">726</text>
+
+                <line x1="-718" x2="693" y1="-516" y2="-516" />
+                <text class="nome-linea" x="-718" y="-485">x-Height</text>
+                <text class="valore-linea" x="693" y="-485">516</text>
+
+                <line x1="-718" x2="693" y1="0" y2="0" />
+                <text class="nome-linea" x="-718" y="31">Baseline</text>
+                <text class="valore-linea" x="693" y="31">0</text>
+
+                <line x1="-718" x2="693" y1="237" y2="237" />
+                <text class="nome-linea" x="-718" y="268">Typo Descender</text>
+                <text class="valore-linea" x="693" y="268">-237</text>
+              </g>
+
+              <g class="gruppo-centrato linee-verticali" aria-hidden="true">
+                <line x1="0" x2="0" y1="-1113" y2="387" />
+                <line id="linea-destra" x1="704" x2="704" y1="-1113" y2="387" />
+                <text class="misura-sotto" id="margine-sinistro" x="-9" y="375" text-anchor="end">-7</text>
+                <text class="misura-sotto" id="larghezza" x="352" y="375" text-anchor="middle">704</text>
+                <text class="misura-sotto" id="margine-destro" x="713" y="375">64</text>
+              </g>
+            </svg>
+          </section>
+
+          <section class="riquadro riquadro-logo" id="logo" data-riquadro="logo">
+            <h1 class="scritta-logo">Unisoft77</h1>
+          </section>
+
+          <section
+            class="riquadro riquadro-giocatore"
+            id="player1"
+            data-riquadro="giocatore1"
+            aria-labelledby="titolo-giocatore1">
+            <div class="giocatore">
+              <h2 class="titolo-giocatore" id="titolo-giocatore1"><span>Player</span> <span>1</span></h2>
+
+              <div class="contenuto-giocatore">
+                <dl class="tabella dati-giocatore">
+                  <div>
+                    <dt>Last card</dt>
+                    <dd id="p1-card">2</dd>
+                  </div>
+                  <div>
+                    <dt>Event</dt>
+                    <dd id="p1-event">weight++</dd>
+                  </div>
+                  <div>
+                    <dt>Color</dt>
+                    <dd id="p1-color">red</dd>
+                  </div>
+                  <div>
+                    <dt>Weight</dt>
+                    <dd id="p1-weight">700</dd>
+                  </div>
+                  <div>
+                    <dt>Italic</dt>
+                    <dd id="p1-italic">off</dd>
+                  </div>
+                </dl>
+
+                <ol class="turni" id="p1-numbers" aria-label="Player 1 turns">
+                  <li data-turno="1" aria-current="step">01</li>
+                  <li data-turno="3">03</li>
+                  <li data-turno="5">05</li>
+                  <li data-turno="7">07</li>
+                  <li data-turno="9">09</li>
+                  <li data-turno="11">11</li>
+                  <li data-turno="13">13</li>
+                  <li data-turno="15">15</li>
+                  <li data-turno="17">17</li>
+                  <li data-turno="19">19</li>
+                  <li data-turno="21">21</li>
+                  <li data-turno="23">23</li>
+                  <li data-turno="25">25</li>
+                  <li data-turno="27">27</li>
+                </ol>
+              </div>
+            </div>
+          </section>
+
+          <section
+            class="riquadro riquadro-giocatore"
+            id="player2"
+            data-riquadro="giocatore2"
+            aria-labelledby="titolo-giocatore2">
+            <div class="giocatore">
+              <h2 class="titolo-giocatore" id="titolo-giocatore2"><span>Player</span> <span>2</span></h2>
+
+              <div class="contenuto-giocatore">
+                <dl class="tabella dati-giocatore">
+                  <div>
+                    <dt>Last card</dt>
+                    <dd id="p2-card">5</dd>
+                  </div>
+                  <div>
+                    <dt>Event</dt>
+                    <dd id="p2-event">weight++</dd>
+                  </div>
+                  <div>
+                    <dt>Color</dt>
+                    <dd id="p2-color">red</dd>
+                  </div>
+                  <div>
+                    <dt>Weight</dt>
+                    <dd id="p2-weight">800</dd>
+                  </div>
+                  <div>
+                    <dt>Italic</dt>
+                    <dd id="p2-italic">off</dd>
+                  </div>
+                </dl>
+
+                <ol class="turni" id="p2-numbers" aria-label="Player 2 turns">
+                  <li data-turno="2" aria-current="step">02</li>
+                  <li data-turno="4">04</li>
+                  <li data-turno="6">06</li>
+                  <li data-turno="8">08</li>
+                  <li data-turno="10">10</li>
+                  <li data-turno="12">12</li>
+                  <li data-turno="14">14</li>
+                  <li data-turno="16">16</li>
+                  <li data-turno="18">18</li>
+                  <li data-turno="20">20</li>
+                  <li data-turno="22">22</li>
+                  <li data-turno="24">24</li>
+                  <li data-turno="26">26</li>
+                  <li data-turno="28">28</li>
+                </ol>
+              </div>
+            </div>
+          </section>
+
+          <section class="riquadro riquadro-grafico" id="graph" data-riquadro="grafico" aria-label="Weight history">
+            <svg
+              class="grafico"
+              id="weight-graph"
+              viewBox="0 0 733 398"
+              preserveAspectRatio="xMidYMid meet"
+              role="img"
+              aria-labelledby="titolo-grafico descrizione-grafico">
+              <title id="titolo-grafico">Weight history</title>
+              <desc id="descrizione-grafico"></desc>
+            </svg>
+          </section>
+
+          <section class="riquadro riquadro-info" id="glyph-info" data-riquadro="info" aria-label="Glyph information">
+            <dl class="tabella info-lettera">
+              <div>
+                <dt>Turn</dt>
+                <dd id="turn">1</dd>
+              </div>
+              <div>
+                <dt>Last card</dt>
+                <dd id="last-card">2</dd>
+              </div>
+              <div>
+                <dt>Event</dt>
+                <dd id="event">weight++</dd>
+              </div>
+              <div>
+                <dt>Color</dt>
+                <dd id="glyph-color">red</dd>
+              </div>
+              <div>
+                <dt>Weight</dt>
+                <dd id="glyph-weight">700</dd>
+              </div>
+              <div>
+                <dt>Axis</dt>
+                <dd id="glyph-axis">weight</dd>
+              </div>
+              <div>
+                <dt>Italic</dt>
+                <dd id="glyph-italic">off</dd>
+              </div>
+              <div>
+                <dt>Glyph Name</dt>
+                <dd id="glyph-name">A</dd>
+              </div>
+              <div>
+                <dt>Unicode Name</dt>
+                <dd id="unicode-name">latin capital letter A</dd>
+              </div>
+              <div>
+                <dt>Unicode Decimal</dt>
+                <dd id="unicode-decimal">65</dd>
+              </div>
+              <div>
+                <dt>Unicode Hex</dt>
+                <dd id="unicode-hex">0041</dd>
+              </div>
+              <div>
+                <dt>HTML Entity</dt>
+                <dd id="html-entity">&amp;#x41;</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section class="riquadro riquadro-colori" id="colori" data-riquadro="colori" aria-label="Current color">
+            <div class="colore-attuale">
+              <span class="testo-nascosto" id="testo-colore">blu</span>
+            </div>
+          </section>
+        </main>
       </div>
     </div>
 
     <script
       src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js"
-      crossorigin="anonymous"></script>
+      integrity="sha384-q1KhAZhJcJXr3zfC3Tz07pBqQSabwFIZhXlmlUAB8s0zk4ETWERkIKGBCFQ5Jc3e"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+      defer></script>
+
     <script
       src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1675466124/drawing_utils.js"
-      crossorigin="anonymous"></script>
+      integrity="sha384-W/7NVG2tfN12ld8faSFVOZ/W4UHFHze98GqEUPTl8EjY9QDwCKQIzoCHp8/IlIIr"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+      defer></script>
+
     <script
       src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js"
-      crossorigin="anonymous"></script>
-    <script src="script.js"></script>
+      integrity="sha384-oHwoZ9HyKv5ark5VOH+XWdbNfmhYtptAOBuV8plz6mAfXvTA6d8fULuYllWouEK2"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+      defer></script>
+
+    <script src="dashboard.js" defer></script>
+    <script src="script.js" defer></script>
   </body>
 </html>
