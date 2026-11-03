@@ -713,3 +713,10 @@
     controllaFont,
   });
 })();
+
+
+addEventListener('keydown', (e) => {
+  if (e.key.length === 1 && !e.metaKey && !e.ctrlKey) {
+    UniDashboard.cambiaLettera(e.key)
+  }
+})
