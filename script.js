@@ -9,10 +9,8 @@
 
   const NOMI_CIFRE = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
 
-  // le uniche carte che il poster può mostrare: i numeri, il +2 e lo slash (corsivo)
   const GLIFI_AMMESSI = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+2', '/'];
 
-  // ogni carta dello stesso colore sale di un gradino, al cambio di colore si torna a light
   const PESI = [
     [300, 'light'],
     [400, 'regular'],
@@ -652,7 +650,6 @@
 
   function impostaStoricoPeso(pesi) {
     if (!Array.isArray(pesi)) {
-      console.warn('[UniDashboard] impostaStoricoPeso vuole una lista di numeri.');
       return;
     }
     storicoPeso = pesi.map(Number).filter(Number.isFinite);
@@ -716,7 +713,6 @@
     coloreManuale: null,
   };
 
-  // usato quando la webcam è spenta o non vede nessun colore
   function impostaColoreManuale(colore) {
     const nome = nomeColore(colore);
     if (!nome) {
@@ -732,7 +728,6 @@
       return false;
     }
 
-    // senza colore la carta si vede lo stesso, ma il peso resta com'è
     const colore = nomeColore(coloreCarta) ?? window.UniWebcam?.coloreRilevato() ?? partita.coloreManuale;
     const stessoColore = colore === partita.colore;
     if (colore) {
@@ -765,7 +760,6 @@
     aggiornaInfo({ ...dati, asse: carta === '/' ? 'italic' : 'weight' });
     aggiornaGiocatore(partita.turno % 2 === 1 ? 1 : 2, dati);
 
-    // alla prima carta lo storico di esempio lascia posto a quello vero
     const storico = partita.turno === 1 ? [] : storicoPeso;
     impostaStoricoPeso([...storico, peso].slice(-(GRAFICO.colonne + 1)));
     return true;
@@ -821,12 +815,10 @@
 })();
 
 
-// la webcam riconosce la carta buttata al centro (webcam.js)
 addEventListener('carta-rilevata', (e) => {
   UniDashboard.giocaCarta(e.detail.carta, e.detail.colore);
 });
 
-// da tastiera, per provare senza carte
 const TASTI_COLORE = { r: 'rosso', y: 'giallo', g: 'verde', b: 'blu' };
 
 addEventListener('keydown', (e) => {
