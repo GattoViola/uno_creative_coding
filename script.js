@@ -9,6 +9,20 @@
 
   const NOMI_CIFRE = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
 
+  // le uniche carte che il poster può mostrare: i numeri, il +2 e lo slash (corsivo)
+  const GLIFI_AMMESSI = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+2', '/'];
+
+  // ogni carta dello stesso colore sale di un gradino, al cambio di colore si torna a light
+  const PESI = [
+    [300, 'light'],
+    [400, 'regular'],
+    [500, 'medium'],
+    [600, 'semibold'],
+    [700, 'bold'],
+    [800, 'extrabold'],
+    [900, 'black'],
+  ];
+
   const GRAFICO = {
     altezza: 398,
     larghezza: 650,
@@ -58,8 +72,8 @@
   const riquadri = Array.from(el.dashboard.querySelectorAll(':scope > [data-riquadro]'));
 
   const stato = {
-    carattere: 'A',
-    peso: 700,
+    carattere: '1',
+    peso: PESI[0][0],
     corsivo: false,
   };
 
@@ -219,6 +233,21 @@
     };
   }
 
+  // per il +2: i dati di ogni carattere uniti, il nome come una legatura (plus_two)
+  function descriviGlifo(testo) {
+    const caratteri = Array.from(testo);
+    if (caratteri.length === 1) return descriviCarattere(testo);
+
+    const parti = caratteri.map(descriviCarattere);
+    return {
+      nomeGlifo: parti.map((p) => p.nomeGlifo).join('_'),
+      nomeUnicode: parti.map((p) => p.nomeUnicode).join(' + '),
+      decimale: parti.map((p) => p.decimale).join(' '),
+      esadecimale: parti.map((p) => p.esadecimale).join(' '),
+      entita: parti.map((p) => p.entita).join(''),
+    };
+  }
+
   const strumentoMisura = document.createElement('canvas').getContext('2d');
 
   function fontCss(peso, corsivo, dimensione) {
@@ -302,13 +331,12 @@
   let ultimaLettera = 0;
 
   async function cambiaLettera(testo) {
-    const caratteri = Array.from(String(testo ?? '').normalize('NFC'));
-    if (caratteri.length !== 1) {
-      console.warn('[UniDashboard] cambiaLettera vuole un solo carattere, ricevuto:', testo);
+    const carattere = String(testo ?? '').trim();
+    if (!GLIFI_AMMESSI.includes(carattere)) {
+      console.warn('[UniDashboard] cambiaLettera accetta solo 0-9, +2 e /, ricevuto:', testo);
       return false;
     }
 
-    const [carattere] = caratteri;
     const numero = ++ultimaLettera;
 
     if ((await fontPronto(carattere)) && !fontHaLaLettera(carattere)) {
@@ -320,7 +348,7 @@
     stato.carattere = carattere;
     el.lettera.textContent = carattere;
 
-    const info = descriviCarattere(carattere);
+    const info = descriviGlifo(carattere);
     scriviTesto('glyph-name', info.nomeGlifo);
     scriviTesto('unicode-name', info.nomeUnicode);
     scriviTesto('unicode-decimal', info.decimale);
@@ -679,8 +707,83 @@
     return risultato;
   }
 
+  const COLORI_PER_TABELLA = { rosso: 'red', giallo: 'yellow', verde: 'green', blu: 'blue' };
+
+  const partita = {
+    turno: 0,
+    colore: null,
+    gradino: 0,
+    coloreManuale: null,
+  };
+
+  // usato quando la webcam è spenta o non vede nessun colore
+  function impostaColoreManuale(colore) {
+    const nome = nomeColore(colore);
+    if (!nome) {
+      console.warn('[UniDashboard] colore sconosciuto:', colore);
+      return;
+    }
+    partita.coloreManuale = nome;
+  }
+
+  function giocaCarta(carta, coloreCarta) {
+    if (!GLIFI_AMMESSI.includes(carta)) {
+      console.warn('[UniDashboard] carta non ammessa:', carta);
+      return false;
+    }
+
+    // senza colore la carta si vede lo stesso, ma il peso resta com'è
+    const colore = nomeColore(coloreCarta) ?? window.UniWebcam?.coloreRilevato() ?? partita.coloreManuale;
+    const stessoColore = colore === partita.colore;
+    if (colore) {
+      partita.gradino = stessoColore ? Math.min(partita.gradino + 1, PESI.length - 1) : 0;
+      partita.colore = colore;
+    } else {
+      console.warn('[UniDashboard] nessun colore rilevato: inquadra la carta o premi r/y/g/b.');
+    }
+    partita.turno += 1;
+
+    const [peso, nomePeso] = PESI[partita.gradino];
+    const corsivo = carta === '/' ? !stato.corsivo : stato.corsivo;
+
+    const eventi = [];
+    if (!colore) eventi.push('no color');
+    else eventi.push(stessoColore ? `weight++ ${nomePeso}` : `reset ${nomePeso}`);
+    if (carta === '/') eventi.push(`italic ${testoOnOff(corsivo)}`);
+
+    const dati = {
+      turno: partita.turno,
+      ultimaCarta: carta,
+      evento: eventi.join(', '),
+      colore: COLORI_PER_TABELLA[colore] ?? '—',
+      peso,
+      corsivo,
+    };
+
+    cambiaLettera(carta);
+    if (colore) cambiaColore(colore);
+    aggiornaInfo({ ...dati, asse: carta === '/' ? 'italic' : 'weight' });
+    aggiornaGiocatore(partita.turno % 2 === 1 ? 1 : 2, dati);
+
+    // alla prima carta lo storico di esempio lascia posto a quello vero
+    const storico = partita.turno === 1 ? [] : storicoPeso;
+    impostaStoricoPeso([...storico, peso].slice(-(GRAFICO.colonne + 1)));
+    return true;
+  }
+
+  function azzeraPartita() {
+    partita.turno = 0;
+    partita.colore = null;
+    partita.gradino = 0;
+    azzeraTurni();
+    azzeraColore();
+    cambiaStile({ peso: PESI[0][0], corsivo: false });
+    impostaStoricoPeso([]);
+  }
+
   el.lettera.setAttribute('font-size', UNITA_PER_EM);
 
+  cambiaStile({ peso: stato.peso, corsivo: stato.corsivo });
   impostaStoricoPeso(STORICO_ESEMPIO);
   adattaGrafico();
   new ResizeObserver(adattaGrafico).observe(el.grafico);
@@ -695,9 +798,12 @@
     centraTurnoAttivo(lista);
   });
 
-  cambiaLettera(el.lettera.textContent.trim() || 'A');
+  cambiaLettera(el.lettera.textContent.trim() || stato.carattere);
 
   window.UniDashboard = Object.freeze({
+    giocaCarta,
+    azzeraPartita,
+    impostaColoreManuale,
     cambiaLettera,
     cambiaStile,
     aggiornaGiocatore,
@@ -715,8 +821,19 @@
 })();
 
 
+// la webcam riconosce la carta buttata al centro (webcam.js)
+addEventListener('carta-rilevata', (e) => {
+  UniDashboard.giocaCarta(e.detail.carta, e.detail.colore);
+});
+
+// da tastiera, per provare senza carte
+const TASTI_COLORE = { r: 'rosso', y: 'giallo', g: 'verde', b: 'blu' };
+
 addEventListener('keydown', (e) => {
-  if (e.key.length === 1 && !e.metaKey && !e.ctrlKey) {
-    UniDashboard.cambiaLettera(e.key)
-  }
+  if (e.metaKey || e.ctrlKey) return;
+
+  if (e.key === '+') UniDashboard.giocaCarta('+2');
+  else if (/^[0-9/]$/.test(e.key)) UniDashboard.giocaCarta(e.key);
+  else if (TASTI_COLORE[e.key.toLowerCase()]) UniDashboard.impostaColoreManuale(TASTI_COLORE[e.key.toLowerCase()]);
+  else if (e.key === 'Escape') UniDashboard.azzeraPartita();
 })
