@@ -1,0 +1,536 @@
+
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
+  <title>Unisoft77 — CMY Arrow Animation</title>
+
+  <style>
+
+    /* =====================================
+       RESET
+    ===================================== */
+
+    * {
+      box-sizing: border-box;
+    }
+
+    /* =====================================
+       VARIABILI PRINCIPALI
+    ===================================== */
+
+    :root {
+
+      /* COLORI CMY */
+      --cyan: #0011ff;
+      --magenta: #FF00FF;
+      --yellow: #FFFF00;
+
+      /* TEMPO TRA LE ROTAZIONI */
+      --step-duration: 2s;
+
+      /* DURATA ROTAZIONE */
+      --rotation-duration: 1.2s;
+
+      /* DURATA CAMBIO COLORE */
+      --color-duration: 0.35s;
+
+      /* DIMENSIONE FRECCE */
+      --arrow-size: 66%;
+
+      /* SPESSORE FRECCE */
+      --arrow-stroke: 12;
+
+      /* COLORE GRIGLIA */
+      --grid-color: rgba(255,255,255,0.45);
+
+    }
+
+    /* =====================================
+       BODY
+    ===================================== */
+
+    body {
+
+      margin: 0;
+      min-height: 100vh;
+
+      background: #1c1c1c;
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
+      padding: 12px;
+
+    }
+
+    /* =====================================
+       CONTENITORE QUADRATO
+    ===================================== */
+
+    .composition {
+
+      position: relative;
+
+      width: min(90vw, 90vh, 900px);
+      aspect-ratio: 1 / 1;
+
+      overflow: hidden;
+
+      border-radius: 12px;
+
+      background-color: var(--cyan);
+
+      transition:
+        background-color var(--color-duration)
+        ease-in-out;
+
+    }
+
+    /* =====================================
+       GRIGLIA PRINCIPALE
+    ===================================== */
+
+    .grid {
+
+      position: absolute;
+      inset: 0;
+
+      pointer-events: none;
+
+      z-index: 2;
+
+    }
+
+    .grid-line {
+
+      position: absolute;
+
+      background: var(--grid-color);
+
+      transform-origin: center;
+
+    }
+
+    /* LINEE VERTICALI */
+
+    .grid-line.vertical {
+
+      width: 1px;
+      height: 100%;
+      top: 0;
+
+    }
+
+    .grid-line.v1 {
+      left: 8.3%;
+    }
+
+    .grid-line.v2 {
+      left: 50%;
+    }
+
+    .grid-line.v3 {
+      left: 91.7%;
+    }
+
+    /* LINEE ORIZZONTALI */
+
+    .grid-line.horizontal {
+
+      height: 1px;
+      width: 100%;
+      left: 0;
+
+    }
+
+    .grid-line.h1 {
+      top: 8.3%;
+    }
+
+    .grid-line.h2 {
+      top: 50%;
+    }
+
+    .grid-line.h3 {
+      top: 91.7%;
+    }
+
+    /* =====================================
+       GRIGLIA MOBILE
+    ===================================== */
+
+    .grid-moving {
+
+      position: absolute;
+
+      inset: 8.3%;
+
+      border: 1px solid var(--grid-color);
+
+      z-index: 2;
+
+      pointer-events: none;
+
+      animation:
+        gridPulse var(--step-duration)
+        ease-in-out infinite;
+
+    }
+
+    /* =====================================
+       CONTENITORE FRECCE
+    ===================================== */
+
+    .arrows {
+
+      position: absolute;
+
+      inset: 8.3%;
+
+      display: grid;
+
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+
+      z-index: 1;
+
+    }
+
+    /* =====================================
+       CELLE FRECCE
+    ===================================== */
+
+    .arrow-cell {
+
+      position: relative;
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
+      overflow: hidden;
+
+      min-width: 0;
+      min-height: 0;
+
+    }
+
+    /* =====================================
+       FRECCE
+    ===================================== */
+
+    .arrow {
+
+      width: var(--arrow-size);
+      height: var(--arrow-size);
+
+      flex-shrink: 0;
+
+      overflow: visible;
+
+      transform-origin: center center;
+
+      transition:
+        transform var(--rotation-duration)
+        cubic-bezier(0.65, 0, 0.2, 1);
+
+      will-change: transform;
+
+    }
+
+    .arrow path {
+
+      fill: none;
+
+      stroke: white;
+
+      stroke-width: var(--arrow-stroke);
+
+      stroke-linecap: round;
+      stroke-linejoin: round;
+
+    }
+
+    /* =====================================
+       ROTAZIONI INIZIALI
+    ===================================== */
+
+    .arrow-1 {
+      transform: rotate(0deg);
+    }
+
+    .arrow-2 {
+      transform: rotate(90deg);
+    }
+
+    .arrow-3 {
+      transform: rotate(180deg);
+    }
+
+    .arrow-4 {
+      transform: rotate(270deg);
+    }
+
+    /* =====================================
+       ANIMAZIONE GRIGLIA
+    ===================================== */
+
+    @keyframes gridPulse {
+
+      0%, 100% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(0.97);
+      }
+
+    }
+
+    /* =====================================
+       ACCESSIBILITÀ
+    ===================================== */
+
+    @media (prefers-reduced-motion: reduce) {
+
+      .composition,
+      .arrow {
+        transition: none;
+      }
+
+      .grid-moving {
+        animation: none;
+      }
+
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+  <div class="composition"
+       role="img"
+       aria-label="Quattro frecce bianche animate su sfondo cyan magenta e yellow">
+
+    <!-- =====================================
+         GRIGLIA
+    ===================================== -->
+
+    <div class="grid" aria-hidden="true">
+
+      <div class="grid-line vertical v1"></div>
+      <div class="grid-line vertical v2"></div>
+      <div class="grid-line vertical v3"></div>
+
+      <div class="grid-line horizontal h1"></div>
+      <div class="grid-line horizontal h2"></div>
+      <div class="grid-line horizontal h3"></div>
+
+    </div>
+
+    <!-- =====================================
+         GRIGLIA MOBILE
+    ===================================== -->
+
+    <div class="grid-moving"
+         aria-hidden="true"></div>
+
+    <!-- =====================================
+         FRECCE
+    ===================================== -->
+
+    <div class="arrows" aria-hidden="true">
+
+      <!-- FRECCIA 1 -->
+
+      <div class="arrow-cell">
+
+        <svg class="arrow arrow-1"
+             viewBox="0 0 100 100">
+
+          <path d="
+            M 15 15
+            L 85 85
+            M 85 20
+            L 85 85
+            L 20 85
+          "/>
+
+        </svg>
+
+      </div>
+
+      <!-- FRECCIA 2 -->
+
+      <div class="arrow-cell">
+
+        <svg class="arrow arrow-2"
+             viewBox="0 0 100 100">
+
+          <path d="
+            M 15 15
+            L 85 85
+            M 85 20
+            L 85 85
+            L 20 85
+          "/>
+
+        </svg>
+
+      </div>
+
+      <!-- FRECCIA 3 -->
+
+      <div class="arrow-cell">
+
+        <svg class="arrow arrow-3"
+             viewBox="0 0 100 100">
+
+          <path d="
+            M 15 15
+            L 85 85
+            M 85 20
+            L 85 85
+            L 20 85
+          "/>
+
+        </svg>
+
+      </div>
+
+      <!-- FRECCIA 4 -->
+
+      <div class="arrow-cell">
+
+        <svg class="arrow arrow-4"
+             viewBox="0 0 100 100">
+
+          <path d="
+            M 15 15
+            L 85 85
+            M 85 20
+            L 85 85
+            L 20 85
+          "/>
+
+        </svg>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+
+    /* =====================================
+       ELEMENTI
+    ===================================== */
+
+    const arrows =
+      document.querySelectorAll('.arrow');
+
+    const composition =
+      document.querySelector('.composition');
+
+    /* =====================================
+       COLORI CMY
+    ===================================== */
+
+    const colors = [
+      '#0011ff', // CYAN
+      '#FF00FF', // MAGENTA
+      '#FFFF00'  // YELLOW
+    ];
+
+    /* =====================================
+       ROTAZIONI INIZIALI
+    ===================================== */
+
+    const initialRotations = [
+      0,
+      90,
+      180,
+      270
+    ];
+
+    /* =====================================
+       LETTURA TEMPI DAL CSS
+    ===================================== */
+
+    const styles =
+      getComputedStyle(document.documentElement);
+
+    const stepDuration =
+      parseFloat(
+        styles.getPropertyValue('--step-duration')
+      ) * 1000;
+
+    /* =====================================
+       STATO ANIMAZIONE
+    ===================================== */
+
+    let currentStep = 0;
+
+    /* =====================================
+       ANIMAZIONE SINCRONIZZATA
+    ===================================== */
+
+    function updateAnimation() {
+
+      currentStep++;
+
+      /* CAMBIO COLORE */
+
+      const colorIndex =
+        currentStep % colors.length;
+
+      composition.style.backgroundColor =
+        colors[colorIndex];
+
+      /* ROTAZIONE FRECCE */
+
+      arrows.forEach((arrow, index) => {
+
+        const angle =
+          initialRotations[index] +
+          currentStep * 90;
+
+        arrow.style.transform =
+          `rotate(${angle}deg)`;
+
+      });
+
+    }
+
+    /* =====================================
+       AVVIO ANIMAZIONE
+    ===================================== */
+
+    const reducedMotion =
+      window.matchMedia(
+        '(prefers-reduced-motion: reduce)'
+      );
+
+    if (!reducedMotion.matches) {
+
+      setInterval(
+        updateAnimation,
+        stepDuration
+      );
+
+    }
+
+  </script>
+
+</body>
+
+</html>
