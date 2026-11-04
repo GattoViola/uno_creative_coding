@@ -174,19 +174,19 @@
   };
 
   const NOMI_ACCENTI = {
-    '̀': ['grave', 'grave'],
-    '́': ['acute', 'acute'],
-    '̂': ['circumflex', 'circumflex'],
-    '̃': ['tilde', 'tilde'],
-    '̄': ['macron', 'macron'],
-    '̆': ['breve', 'breve'],
-    '̇': ['dotaccent', 'dot above'],
-    '̈': ['dieresis', 'diaeresis'],
-    '̊': ['ring', 'ring above'],
-    '̋': ['hungarumlaut', 'double acute'],
-    '̌': ['caron', 'caron'],
-    '̧': ['cedilla', 'cedilla'],
-    '̨': ['ogonek', 'ogonek'],
+    '\u0300': ['grave', 'grave'],
+    '\u0301': ['acute', 'acute'],
+    '\u0302': ['circumflex', 'circumflex'],
+    '\u0303': ['tilde', 'tilde'],
+    '\u0304': ['macron', 'macron'],
+    '\u0306': ['breve', 'breve'],
+    '\u0307': ['dotaccent', 'dot above'],
+    '\u0308': ['dieresis', 'diaeresis'],
+    '\u030A': ['ring', 'ring above'],
+    '\u030B': ['hungarumlaut', 'double acute'],
+    '\u030C': ['caron', 'caron'],
+    '\u0327': ['cedilla', 'cedilla'],
+    '\u0328': ['ogonek', 'ogonek'],
   };
 
   function nomeLetteraSemplice(carattere) {
@@ -231,7 +231,6 @@
     };
   }
 
-  // per il +2: i dati di ogni carattere uniti, il nome come una legatura (plus_two)
   function descriviGlifo(testo) {
     const caratteri = Array.from(testo);
     if (caratteri.length === 1) return descriviCarattere(testo);
@@ -371,7 +370,6 @@
     if (corsivo !== undefined) {
       stato.corsivo = Boolean(corsivo);
       el.poster.style.setProperty('--stile-lettera', stato.corsivo ? 'italic' : 'normal');
-      // con il corsivo attivo diventa italic tutto il testo della pagina (style.css, :root[data-corsivo])
       document.documentElement.toggleAttribute('data-corsivo', stato.corsivo);
       scriviTesto('glyph-italic', testoOnOff(stato.corsivo));
     }
@@ -488,7 +486,6 @@
       console.warn('[UniDashboard] colore sconosciuto:', colore);
       return;
     }
-    // il colore d'accento di tutta la dashboard (style.css, :root[data-colore])
     document.documentElement.dataset.colore = nome;
     quadratoColore.dataset.colore = nome;
     testoColore.textContent = nome;
@@ -594,8 +591,6 @@
     parti.puntiPeso = creaSvg('g', { class: 'punti-peso', 'aria-hidden': 'true' }, contenuto);
   }
 
-  // curva monotona: passa per i punti senza mai andare oltre (niente gobbe sopra il 900),
-  // e dove due punti hanno lo stesso valore il tratto resta dritto
   function curvaMorbida(punti) {
     if (punti.length === 0) return '';
     let percorso = `M${arrotonda(punti[0].x)} ${arrotonda(punti[0].y)}`;
@@ -743,7 +738,6 @@
     }
 
     const colore = nomeColore(coloreCarta) ?? window.UniWebcam?.coloreRilevato() ?? partita.coloreManuale;
-    // la "/" accende e spegne solo il corsivo: il peso resta com'è
     const slash = carta === '/';
     const stessoColore = colore === partita.colore;
     if (colore) {

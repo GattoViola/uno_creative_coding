@@ -1,39 +1,34 @@
 (() => {
   'use strict';
 
-  // zona centrale dove vengono buttate le carte, rispetto al fotogramma
   const ZONA = { larghezza: 0.6, altezza: 0.7 };
 
-  const PASSO = 2; // legge un pixel ogni 2, in entrambe le direzioni
+  const PASSO = 2;
   const SATURAZIONE_MIN = 0.4;
   const LUMINOSITA_MIN = 0.25;
-  const SIMBOLO_MIN = 0.0005; // area minima del simbolo, rispetto al fotogramma
-  const FOTOGRAMMI_STABILI = 10; // fermo per un terzo di secondo prima di leggere
-  // la pila è stata toccata se tra due fotogrammi cambia la luce di abbastanza punti della zona
-  const SALTO_LUCE = 40; // differenza di luminosità (0-255) per dire che un punto è cambiato
-  const QUOTA_MOVIMENTO = 0.04; // quota di punti cambiati per dire che qualcosa si è mosso
-  const LATO_LETTURA = 160; // il simbolo viene ingrandito a questo lato per il confronto
+  const SIMBOLO_MIN = 0.0005;
+  const FOTOGRAMMI_STABILI = 10;
+  const SALTO_LUCE = 40;
+  const QUOTA_MOVIMENTO = 0.04;
+  const LATO_LETTURA = 160;
 
-  // il simbolo si confronta con i glifi veri del font, ruotati e in più pesi
   const FONT_CARTE = 'Unisoft77';
   const PESI_CARTE = [300, 500, 700, 900];
   const LATO_MODELLO = 32;
-  const PASSO_ROTAZIONE = 5; // gradi
-  const SOMIGLIANZA_MIN = 0.55; // sovrapposizione minima (0-1) tra simbolo e glifo
-  const PARI_MERITO = 0.03; // sotto questa differenza vince il glifo più dritto (6 e 9)
+  const PASSO_ROTAZIONE = 5;
+  const SOMIGLIANZA_MIN = 0.55;
+  const PARI_MERITO = 0.03;
 
-  // una lettura vale solo se è uguale in almeno 4 degli ultimi 5 fotogrammi
-  const VOTI = 5;
-  const MAGGIORANZA = 4;
+  const VOTI = 9;
+  const MAGGIORANZA = 7;
+  const PAUSA_TURNI = 1500;
+  const BUCO_MIN = 15;
 
-  // la "/" si riconosce dalla forma: un solo tratto molto allungato che riempie il suo rettangolo
-  // (nel font: "/" allungamento ≥ 18 e riempimento ≈ 0.9, "1" riempimento ≤ 0.6)
   const SLASH_ALLUNGAMENTO = 8;
   const SLASH_RIEMPIMENTO = 0.75;
 
   const COLORI = ['rosso', 'giallo', 'verde', 'blu'];
   const GLIFI_AMMESSI = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+2', '/'];
-  // al centro della carta +2 c'è solo il + (il "+2" intero è negli angoli)
   const SIMBOLO_AL_CENTRO = { '+2': '+' };
 
   const trova = (id) => document.getElementById(id);
@@ -46,15 +41,16 @@
   const ctxLettura = lettura.getContext('2d', { willReadFrequently: true });
 
   let flusso = null;
-  let modelli = null; // [{ testo, angolo, maschera }]
+  let modelli = null;
 
   let precedente = null;
   let conteggio = 0;
   let voti = [];
-  let ultimaGiocata = null; // { simbolo, testo } dell'ultima carta giocata
-  let disturbato = true; // la pila è stata toccata dopo l'ultima giocata
+  let buchi = [];
+  let ultimaGiocata = null;
+  let disturbato = true;
   let lucePrecedente = null;
-  let movimento = 0; // quota di punti della zona cambiati dall'ultimo fotogramma
+  let movimento = 0;
   let coloreStabile = null;
 
   function coloreDelPixel(r, g, b) {
@@ -76,8 +72,6 @@
     return -1;
   }
 
-  // il simbolo della carta in cima è l'unico chiaro e intero dentro il colore:
-  // le zone non colorate chiuse dal colore sono i simboli, quelle che toccano il bordo sono il tavolo
   function trovaSimbolo() {
     const larghezzaZona = Math.round(canvas.width * ZONA.larghezza);
     const altezzaZona = Math.round(canvas.height * ZONA.altezza);
@@ -154,7 +148,6 @@
       return tocca ? null : m;
     }
 
-    // l'area minima vale per il pezzo principale, i pezzi vicini (il + del +2) possono essere più piccoli
     const minimo = (SIMBOLO_MIN * canvas.width * canvas.height) / (PASSO * PASSO);
     const buchi = [];
     for (let inizio = 0; inizio < griglia.length; inizio += 1) {
@@ -164,7 +157,6 @@
     }
     if (!buchi.some((b) => b.n >= minimo)) return null;
 
-    // il simbolo al centro è il pezzo più grande (gli indici negli angoli sono più piccoli)
     const principale = buchi.reduce((a, b) => (b.n > a.n ? b : a));
     return descriviGruppo([principale]);
   }
@@ -187,7 +179,6 @@
     };
   }
 
-  // asse principale, allungamento e riempimento del rettangolo ruotato che contiene il simbolo
   function misuraForma(celle) {
     const n = celle.length / 2;
     let sx = 0;
@@ -246,7 +237,6 @@
     );
   }
 
-  // ritaglia il simbolo e lo lascia in bianco e nero: 1 dove c'è il simbolo
   function ritagliaSimbolo(simbolo) {
     const lato = LATO_LETTURA;
     lettura.width = lato;
@@ -269,7 +259,6 @@
       inchiostro[i] = coloreDelPixel(data[i * 4], data[i * 4 + 1], data[i * 4 + 2]) === colore ? 0 : 1;
     }
 
-    // quello che tocca i bordi è tavolo o altre carte, non il simbolo
     const pila = [];
     for (let k = 0; k < lato; k += 1) {
       pila.push(k, (lato - 1) * lato + k, k * lato, k * lato + lato - 1);
@@ -295,7 +284,6 @@
     return punti;
   }
 
-  // ruota i punti e li fa stare in un quadrato di LATO_MODELLO, centrati: così conta solo la forma
   function normalizza(punti, angolo) {
     const cos = Math.cos(angolo);
     const sin = Math.sin(angolo);
@@ -338,7 +326,8 @@
     const nuovi = [];
 
     for (const peso of PESI_CARTE) {
-      await document.fonts.load(`${peso} 160px "${FONT_CARTE}"`, GLIFI_AMMESSI.join(''));
+      const caricati = await document.fonts.load(`${peso} 160px "${FONT_CARTE}"`, GLIFI_AMMESSI.join(''));
+      if (!caricati.length) console.warn(`[UniWebcam] font ${FONT_CARTE} ${peso} non caricato: le carte verranno confrontate con il font di sistema.`);
       for (const testo of GLIFI_AMMESSI) {
         ctxFoglio.clearRect(0, 0, lato, lato);
         ctxFoglio.font = `${peso} 120px "${FONT_CARTE}"`;
@@ -360,7 +349,6 @@
     modelli = nuovi;
   }
 
-  // sovrapposizione tra due maschere: 1 identiche, 0 niente in comune
   function somiglianza(a, b) {
     let comune = 0;
     let unione = 0;
@@ -386,7 +374,6 @@
     if (punti.length < 40) return null;
     const maschera = normalizza(punti, 0);
 
-    // per ogni glifo, la rotazione che gli somiglia di più
     const migliori = new Map();
     for (const modello of modelli) {
       const punteggio = somiglianza(maschera, modello.maschera);
@@ -395,7 +382,6 @@
       }
     }
 
-    // a pari merito vince il glifo più dritto rispetto alla camera (un 6 capovolto è un 9)
     const storto = (angolo) => Math.abs(Math.atan2(Math.sin(angolo), Math.cos(angolo)));
     const classifica = [...migliori.values()].sort((a, b) => b.punteggio - a.punteggio);
     const [primo] = classifica;
@@ -416,16 +402,84 @@
     return null;
   }
 
-  // una carta conta solo se la pila è stata toccata (mano, carta in volo) dopo l'ultima giocata:
-  // così una rilettura diversa della stessa carta non diventa un turno in più
-  function decidi(simbolo, testo) {
+  function allarga(forma, lato, valore) {
+    const nuova = new Uint8Array(forma.length);
+    for (let y = 0; y < lato; y++) {
+      for (let x = 0; x < lato; x++) {
+        let risultato = forma[y * lato + x];
+        for (let dy = -1; dy <= 1 && risultato !== valore; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const vx = x + dx;
+            const vy = y + dy;
+            if (vx >= 0 && vy >= 0 && vx < lato && vy < lato && forma[vy * lato + vx] === valore) {
+              risultato = valore;
+              break;
+            }
+          }
+        }
+        nuova[y * lato + x] = risultato;
+      }
+    }
+    return nuova;
+  }
+
+  function contaBuchi(simbolo) {
+    const lato = LATO_LETTURA;
+    let forma = ritagliaSimbolo(simbolo);
+    forma = allarga(allarga(forma, lato, 1), lato, 1);
+    forma = allarga(allarga(forma, lato, 0), lato, 0);
+
+    const visto = new Uint8Array(forma.length);
+    const riempi = (inizio) => {
+      let area = 0;
+      const pila = [inizio];
+      visto[inizio] = 1;
+      while (pila.length) {
+        const i = pila.pop();
+        area++;
+        const x = i % lato;
+        const vicini = [x > 0 ? i - 1 : -1, x < lato - 1 ? i + 1 : -1, i - lato, i + lato];
+        for (const v of vicini) {
+          if (v >= 0 && v < forma.length && !forma[v] && !visto[v]) {
+            visto[v] = 1;
+            pila.push(v);
+          }
+        }
+      }
+      return area;
+    };
+
+    for (let k = 0; k < lato; k++) {
+      for (const i of [k, (lato - 1) * lato + k, k * lato, k * lato + lato - 1]) {
+        if (!forma[i] && !visto[i]) riempi(i);
+      }
+    }
+
+    let quanti = 0;
+    for (let i = 0; i < forma.length; i++) {
+      if (!forma[i] && !visto[i] && riempi(i) >= BUCO_MIN) quanti++;
+    }
+    return quanti;
+  }
+
+  function piuFrequente(valori) {
+    const conti = new Map();
+    for (const valore of valori) conti.set(valore, (conti.get(valore) ?? 0) + 1);
+    return [...conti].sort((a, b) => b[1] - a[1])[0][0];
+  }
+
+  function decidi(simbolo, testo, buchiCarta) {
     if (!disturbato) return;
+    const adesso = performance.now();
+    if (ultimaGiocata && adesso - ultimaGiocata.tempo < PAUSA_TURNI) return;
     disturbato = false;
 
-    const stessa = ultimaGiocata?.testo === testo && stessoSimbolo(simbolo, ultimaGiocata.simbolo, 0.3);
-    ultimaGiocata = { simbolo, testo };
+    const stessa =
+      ultimaGiocata?.simbolo.colore === simbolo.colore &&
+      (ultimaGiocata.testo === testo || ultimaGiocata.buchi === buchiCarta);
     if (stessa) return;
 
+    ultimaGiocata = { simbolo, testo, buchi: buchiCarta, tempo: adesso };
     console.debug(`[UniWebcam] carta ${testo} ${simbolo.colore}`);
     window.dispatchEvent(new CustomEvent('carta-rilevata', { detail: { carta: testo, colore: simbolo.colore } }));
   }
@@ -440,6 +494,7 @@
     else {
       conteggio = 0;
       voti = [];
+      buchi = [];
     }
     precedente = simbolo;
 
@@ -447,10 +502,11 @@
 
     if (simbolo && conteggio >= FOTOGRAMMI_STABILI) {
       coloreStabile = simbolo.colore;
-      if (modelli) {
+      if (modelli && disturbato) {
         voti = [...voti, riconosci(simbolo)].slice(-VOTI);
+        buchi = [...buchi, contaBuchi(simbolo)].slice(-VOTI);
         const testo = votato();
-        if (testo) decidi(simbolo, testo);
+        if (testo) decidi(simbolo, testo, piuFrequente(buchi));
       }
     }
 
@@ -470,7 +526,13 @@
     }
 
     video.srcObject = flusso;
-    await video.play();
+    try {
+      await video.play();
+    } catch (errore) {
+      console.warn('[UniWebcam] il video della webcam non parte:', errore);
+      ferma();
+      return false;
+    }
     contenitore.hidden = false;
     requestAnimationFrame(ciclo);
     return true;
@@ -490,7 +552,6 @@
     avvia,
     ferma,
     coloreRilevato: () => coloreStabile,
-    // per tarare: cosa viene letto adesso
     letturaAttuale: () => (precedente && modelli ? riconosci(precedente) : null),
     ultimoSimbolo: () => precedente,
   });

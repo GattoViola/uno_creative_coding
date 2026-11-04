@@ -247,25 +247,17 @@
           <section class="riquadro riquadro-colori" id="colori" data-riquadro="colori" aria-label="Current color">
             <div class="colore-attuale">
               <span class="testo-nascosto" id="testo-colore">blu</span>
+              <svg
+                class="mani"
+                id="mani"
+                viewBox="0 0 100 100"
+                preserveAspectRatio="xMidYMid meet"
+                aria-hidden="true"></svg>
             </div>
           </section>
         </main>
       </div>
     </div>
-
-    <script
-      src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js"
-      integrity="sha384-q1KhAZhJcJXr3zfC3Tz07pBqQSabwFIZhXlmlUAB8s0zk4ETWERkIKGBCFQ5Jc3e"
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-      defer></script>
-
-    <script
-      src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1675466124/drawing_utils.js"
-      integrity="sha384-W/7NVG2tfN12ld8faSFVOZ/W4UHFHze98GqEUPTl8EjY9QDwCKQIzoCHp8/IlIIr"
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-      defer></script>
 
     <script
       src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js"
@@ -274,8 +266,8 @@
       referrerpolicy="no-referrer"
       defer></script>
 
-    <script src="dashboard.js" defer></script>
     <script src="webcam.js" defer></script>
+    <script src="mani.js" defer></script>
     <script src="script.js" defer></script>
   </body>
 </html>

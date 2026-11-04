@@ -25,7 +25,6 @@
   --colore-verde: #1f9e4a;
   --colore-blu: var(--blu);
 
-  /* colore d'accento: segue il colore dell'ultima carta giocata (html[data-colore]) */
   --accento: var(--colore-blu);
   --su-accento: var(--bianco);
   --durata-colore: 400ms ease;
@@ -71,7 +70,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* la carta "/" mette in corsivo tutto il testo, non solo il glifo del poster */
 :root[data-corsivo] body {
   font-style: italic;
 }
@@ -416,14 +414,30 @@ canvas {
   overflow: hidden;
 }
 
-/* .info-lettera > div:first-child > * {
-  text-box: trim-start cap alphabetic;
-} */
-
 .colore-attuale {
+  position: relative;
   height: 100%;
   background: var(--accento);
   transition: background-color var(--durata-colore);
+}
+
+.mani {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.mani .punta {
+  fill: var(--su-accento);
+}
+
+.mani .articolazione {
+  fill: none;
+  stroke: var(--su-accento);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
 }
 
 .testo-nascosto {
