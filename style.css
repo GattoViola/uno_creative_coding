@@ -396,6 +396,46 @@ canvas {
   transition: stroke var(--durata-colore);
 }
 
+.glifo-grafico {
+  font-family: var(--carattere);
+  font-weight: 300;
+  fill: #bdbdbd;
+  opacity: 0;
+  transition: opacity calc(var(--intervallo-glifi, 800ms) * 0.2) ease-in-out;
+  user-select: none;
+}
+
+.glifo-grafico.visibile {
+  opacity: 1;
+  animation: respiro-glifo var(--intervallo-glifi, 800ms) ease-in-out;
+}
+
+@keyframes respiro-glifo {
+  0% {
+    font-weight: 300;
+  }
+
+  50% {
+    font-weight: 900;
+  }
+
+  100% {
+    font-weight: 300;
+  }
+}
+
+.punti-peso .attivo {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pallino-attivo 400ms ease;
+}
+
+@keyframes pallino-attivo {
+  from {
+    transform: scale(0.55);
+  }
+}
+
 .punti-peso circle {
   fill: #ececec;
   stroke: var(--sfondo);
@@ -510,5 +550,15 @@ canvas {
   .linea-peso,
   .colore-attuale {
     transition: none;
+  }
+
+  .punti-peso .attivo {
+    animation: none;
+  }
+
+  .glifo-grafico,
+  .glifo-grafico.visibile {
+    transition: none;
+    animation: none;
   }
 }

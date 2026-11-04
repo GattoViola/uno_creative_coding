@@ -15,11 +15,15 @@
     [300, 'light'],
     [400, 'regular'],
     [500, 'medium'],
-    [600, 'semibold'],
     [700, 'bold'],
-    [800, 'extrabold'],
-    [900, 'black'],
+    [800, 'black'],
+    [900, 'xblack'],
   ];
+
+  const LETTERE_GRAFICO = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const ALTEZZA_MAIUSCOLE = 726;
+  const INTERVALLO_GLIFI = 800;
+  const PESO_MEDIO_GLIFI = 600;
 
   const GRAFICO = {
     altezza: 398,
@@ -30,18 +34,20 @@
     basso: 359,
     valoreMin: 300,
     valoreMax: 900,
-    passo: 150,
-    tacchePerPasso: 5,
+    livelli: PESI.map(([peso]) => peso),
+    distanzaTacche: 25,
+    distanzaLinee: 100,
     colonne: 10,
     righelloAlto: 367,
     righelloBasso: 386,
     taccheRighello: 100,
     raggioPunti: 5,
+    raggioAttivo: 9,
     margine: 5,
     onda: { periodi: 3, minimo: 315, massimo: 800, campioni: 240 },
   };
 
-  const STORICO_ESEMPIO = [318, 386, 487, 602, 752, 885];
+  const STORICO_ESEMPIO = [300, 400, 500, 700, 800, 900];
   const NAMESPACE_SVG = 'http://www.w3.org/2000/svg';
   const movimentoRidotto = window.matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -364,6 +370,7 @@
         stato.peso = Math.round(limita(valore, PESO_MIN, PESO_MAX));
         el.poster.style.setProperty('--peso-lettera', String(stato.peso));
         scriviTesto('glyph-weight', stato.peso);
+        disegnaStoricoPeso();
       }
     }
 
@@ -538,6 +545,11 @@
     parti.contenuto?.remove();
     const contenuto = creaSvg('g', { class: 'contenuto-grafico' }, el.grafico);
     parti.contenuto = contenuto;
+
+    parti.glifi = [0, 1].map(() => creaSvg('text', { class: 'glifo-grafico', 'aria-hidden': 'true' }, contenuto));
+    parti.glifi[glifoVisibile].classList.add('visibile');
+    impaginaGlifi();
+
     const griglia = creaSvg('g', { class: 'griglia-grafico', 'aria-hidden': 'true' }, contenuto);
     const tacche = creaSvg('g', { class: 'tacche', 'aria-hidden': 'true' }, contenuto);
     const numeri = creaSvg('g', { class: 'numeri-asse', 'aria-hidden': 'true' }, contenuto);
@@ -548,25 +560,27 @@
     }
 
     const asseX = GRAFICO.sinistra - 10;
-    const distanzaTacche = GRAFICO.passo / GRAFICO.tacchePerPasso;
-
-    for (let valore = GRAFICO.valoreMin; valore <= GRAFICO.valoreMax; valore += distanzaTacche) {
+    for (let valore = GRAFICO.valoreMin; valore <= GRAFICO.valoreMax; valore += GRAFICO.distanzaTacche) {
       const y = arrotonda(yPer(valore));
-      const conNumero = (valore - GRAFICO.valoreMin) % GRAFICO.passo === 0;
+      const conLinea = (valore - GRAFICO.valoreMin) % GRAFICO.distanzaLinee === 0;
+      const conNumero = GRAFICO.livelli.includes(valore);
 
-      if (conNumero) {
+      if (conLinea) {
         creaSvg(
           'line',
           { class: 'linea-tratteggiata', x1: asseX, x2: GRAFICO.destra, y1: y, y2: y },
           griglia,
         );
+      }
+
+      if (conNumero) {
         const numero = creaSvg('text', { x: 0, y, 'dominant-baseline': 'central' }, numeri);
         numero.textContent = String(valore);
       }
 
       creaSvg(
         'line',
-        { x1: conNumero ? asseX : asseX + 3, x2: GRAFICO.sinistra - 1, y1: y, y2: y },
+        { x1: conLinea ? asseX : asseX + 3, x2: GRAFICO.sinistra - 1, y1: y, y2: y },
         tacche,
       );
     }
@@ -621,6 +635,71 @@
   }
 
   let storicoPeso = [];
+  let glifiGrafico = [...LETTERE_GRAFICO];
+  let indiceGlifo = 0;
+  let glifoVisibile = 0;
+  let estensioneGlifi = { sopra: 963, sotto: 237 };
+
+  async function preparaGlifiGrafico() {
+    const simboli = Object.keys(NOMI_SIMBOLI).filter((simbolo) => simbolo.trim());
+    if (!(await fontPronto(simboli.join('')))) return;
+
+    glifiGrafico = [...LETTERE_GRAFICO, ...simboli.filter(fontHaLaLettera)];
+    strumentoMisura.font = fontCss(400, false, UNITA_PER_EM);
+    estensioneGlifi = glifiGrafico.reduce(
+      (estensione, glifo) => {
+        const misura = strumentoMisura.measureText(glifo);
+        return {
+          sopra: Math.max(estensione.sopra, misura.actualBoundingBoxAscent),
+          sotto: Math.max(estensione.sotto, misura.actualBoundingBoxDescent),
+        };
+      },
+      { sopra: 0, sotto: 0 },
+    );
+    impaginaGlifi();
+  }
+
+  function mettiGlifo(elemento, glifo) {
+    const corpo = Number(elemento.getAttribute('font-size'));
+    const corsivo = getComputedStyle(elemento).fontStyle === 'italic';
+    strumentoMisura.font = fontCss(PESO_MEDIO_GLIFI, corsivo, corpo);
+    const misura = strumentoMisura.measureText(glifo);
+    const centro = (GRAFICO.sinistra + GRAFICO.destra) / 2;
+    const inchiostro = (misura.actualBoundingBoxRight - misura.actualBoundingBoxLeft) / 2;
+
+    elemento.textContent = glifo;
+    elemento.setAttribute('text-anchor', 'middle');
+    elemento.setAttribute('x', arrotonda(centro + misura.width / 2 - inchiostro));
+  }
+
+  function impaginaGlifi() {
+    if (!parti.glifi) return;
+
+    const mezzoMaiuscole = ALTEZZA_MAIUSCOLE / 2;
+    const metaSpazio = (GRAFICO.basso - GRAFICO.alto) * 0.47;
+    const metaGlifi = Math.max(estensioneGlifi.sopra - mezzoMaiuscole, mezzoMaiuscole + estensioneGlifi.sotto);
+    const corpo = (metaSpazio * UNITA_PER_EM) / metaGlifi;
+    const lineaDiBase = (GRAFICO.alto + GRAFICO.basso) / 2 + (mezzoMaiuscole * corpo) / UNITA_PER_EM;
+
+    parti.glifi.forEach((elemento) => {
+      elemento.setAttribute('font-size', arrotonda(corpo));
+      elemento.setAttribute('y', arrotonda(lineaDiBase));
+    });
+    mettiGlifo(parti.glifi[glifoVisibile], glifiGrafico[indiceGlifo]);
+  }
+
+  function prossimoGlifo() {
+    if (!parti.glifi) return;
+
+    indiceGlifo = (indiceGlifo + 1) % glifiGrafico.length;
+    const uscente = parti.glifi[glifoVisibile];
+    glifoVisibile = 1 - glifoVisibile;
+    const entrante = parti.glifi[glifoVisibile];
+
+    mettiGlifo(entrante, glifiGrafico[indiceGlifo]);
+    uscente.classList.remove('visibile');
+    entrante.classList.add('visibile');
+  }
 
   function adattaGrafico() {
     const { clientWidth, clientHeight } = el.grafico;
@@ -640,14 +719,16 @@
     if (!parti.lineaPeso) return;
     const ultimo = Math.max(storicoPeso.length - 1, 1);
     const punti = storicoPeso.map((peso, i) => ({ x: xPer(i / ultimo), y: yPer(peso) }));
+    const attivo = storicoPeso.lastIndexOf(stato.peso);
 
     parti.lineaPeso.setAttribute('d', curvaMorbida(punti));
     parti.puntiPeso.replaceChildren(
-      ...punti.map((punto) =>
+      ...punti.map((punto, i) =>
         creaSvg('circle', {
+          class: i === attivo ? 'attivo' : '',
           cx: arrotonda(punto.x),
           cy: arrotonda(punto.y),
-          r: GRAFICO.raggioPunti,
+          r: i === attivo ? GRAFICO.raggioAttivo : GRAFICO.raggioPunti,
         }),
       ),
     );
@@ -791,6 +872,10 @@
   impostaStoricoPeso(STORICO_ESEMPIO);
   adattaGrafico();
   new ResizeObserver(adattaGrafico).observe(el.grafico);
+
+  el.grafico.style.setProperty('--intervallo-glifi', `${INTERVALLO_GLIFI}ms`);
+  preparaGlifiGrafico();
+  if (!movimentoRidotto.matches) setInterval(prossimoGlifo, INTERVALLO_GLIFI);
 
   const osservaTurni = new ResizeObserver((cambiamenti) => {
     cambiamenti.forEach((cambiamento) => centraTurnoAttivo(cambiamento.target));
