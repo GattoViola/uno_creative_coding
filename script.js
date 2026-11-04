@@ -47,6 +47,19 @@
     onda: { periodi: 3, minimo: 315, massimo: 800, campioni: 240 },
   };
 
+  const SPAZIO_TRA_SIMBOLI = 70;
+
+  const POSTER = {
+    lato: 1500,
+    centroMetriche: -363,
+    occupazioneMassima: 0.6,
+    rientroSinistro: 32,
+    rientroDestro: 57,
+    distanzaScritte: 31,
+    distanzaMisure: 12,
+    distanzaLinee: 9,
+  };
+
   const STORICO_ESEMPIO = [300, 400, 500, 700, 800, 900];
   const NAMESPACE_SVG = 'http://www.w3.org/2000/svg';
   const movimentoRidotto = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -259,26 +272,83 @@
 
   function misuraLettera(carattere, peso, corsivo) {
     strumentoMisura.font = fontCss(peso, corsivo, UNITA_PER_EM);
-    const misura = strumentoMisura.measureText(carattere);
-    const larghezza = misura.width;
-    const bordoSinistro = -misura.actualBoundingBoxLeft;
-    const bordoDestro = misura.actualBoundingBoxRight;
+    const caratteri = Array.from(carattere);
+    const misure = caratteri.map((c) => strumentoMisura.measureText(c));
+    const spazi = misure.map((misura, i) => {
+      if (i === 0) return 0;
+      const prima = misure[i - 1];
+      const vuoto = prima.width - prima.actualBoundingBoxRight - misura.actualBoundingBoxLeft;
+      return Math.round(SPAZIO_TRA_SIMBOLI - vuoto);
+    });
+    const primo = misure[0];
+    const ultimo = misure[misure.length - 1];
+    const larghezza =
+      misure.reduce((somma, misura) => somma + misura.width, 0) + spazi.reduce((somma, spazio) => somma + spazio, 0);
 
     return {
       larghezza: Math.round(larghezza),
-      margineSinistro: Math.round(bordoSinistro),
-      margineDestro: Math.round(larghezza - bordoDestro),
+      margineSinistro: Math.round(-primo.actualBoundingBoxLeft),
+      margineDestro: Math.round(ultimo.width - ultimo.actualBoundingBoxRight),
+      caratteri,
+      spazi,
     };
   }
 
-  function mostraMisure({ larghezza, margineSinistro, margineDestro }) {
+  function scriviLettera(caratteri, spazi) {
+    el.lettera.replaceChildren(
+      ...caratteri.map((carattere, i) => {
+        const pezzo = document.createElementNS(NAMESPACE_SVG, 'tspan');
+        pezzo.textContent = carattere;
+        if (spazi[i]) pezzo.setAttribute('dx', spazi[i]);
+        return pezzo;
+      }),
+    );
+  }
+
+  function inquadraPoster(larghezza) {
+    const lato = Math.max(POSTER.lato, larghezza / POSTER.occupazioneMassima);
+    const scala = lato / POSTER.lato;
+    const sinistra = -lato / 2;
+    const alto = POSTER.centroMetriche - lato / 2;
+
+    el.disegno.setAttribute('viewBox', `${sinistra} ${alto} ${lato} ${lato}`);
+    el.disegno.style.setProperty('--scala-poster', String(scala));
+
+    el.disegno.querySelectorAll('.linee-orizzontali line').forEach((linea) => {
+      const y = Number(linea.getAttribute('y1'));
+      const nome = linea.nextElementSibling;
+      const valore = nome.nextElementSibling;
+      linea.setAttribute('x1', sinistra + POSTER.rientroSinistro * scala);
+      linea.setAttribute('x2', -sinistra - POSTER.rientroDestro * scala);
+      nome.setAttribute('x', sinistra + POSTER.rientroSinistro * scala);
+      valore.setAttribute('x', -sinistra - POSTER.rientroDestro * scala);
+      nome.setAttribute('y', y + POSTER.distanzaScritte * scala);
+      valore.setAttribute('y', y + POSTER.distanzaScritte * scala);
+    });
+
+    el.disegno.querySelectorAll('.linee-verticali line').forEach((linea) => {
+      linea.setAttribute('y1', alto);
+      linea.setAttribute('y2', alto + lato);
+    });
+
+    [el.margineSinistro, el.larghezza, el.margineDestro].forEach((misura) => {
+      misura.setAttribute('y', alto + lato - POSTER.distanzaMisure * scala);
+    });
+
+    return scala;
+  }
+
+  function mostraMisure({ larghezza, margineSinistro, margineDestro, caratteri, spazi }) {
+    scriviLettera(caratteri, spazi);
+    const scala = inquadraPoster(larghezza);
     el.disegno.style.setProperty('--larghezza-lettera', String(larghezza));
 
     el.lineaDestra.setAttribute('x1', larghezza);
     el.lineaDestra.setAttribute('x2', larghezza);
 
+    el.margineSinistro.setAttribute('x', -POSTER.distanzaLinee * scala);
     el.larghezza.setAttribute('x', larghezza / 2);
-    el.margineDestro.setAttribute('x', larghezza + 9);
+    el.margineDestro.setAttribute('x', larghezza + POSTER.distanzaLinee * scala);
 
     el.margineSinistro.textContent = String(margineSinistro);
     el.larghezza.textContent = String(larghezza);
@@ -856,6 +926,36 @@
     return true;
   }
 
+  function giocaCambioColore(coloreScelto) {
+    const colore = nomeColore(coloreScelto);
+    if (!colore) {
+      console.warn('[UniDashboard] colore sconosciuto per il cambia colore:', coloreScelto);
+      return false;
+    }
+
+    partita.gradino = 0;
+    partita.colore = colore;
+    partita.turno += 1;
+
+    const [peso, nomePeso] = PESI[partita.gradino];
+    const dati = {
+      turno: partita.turno,
+      ultimaCarta: 'wild',
+      evento: `reset ${nomePeso}`,
+      colore: COLORI_PER_TABELLA[colore],
+      peso,
+      corsivo: stato.corsivo,
+    };
+
+    cambiaColore(colore);
+    aggiornaInfo({ ...dati, asse: 'weight' });
+    aggiornaGiocatore(partita.turno % 2 === 1 ? 1 : 2, dati);
+
+    const storico = partita.turno === 1 ? [] : storicoPeso;
+    impostaStoricoPeso([...storico, peso].slice(-(GRAFICO.colonne + 1)));
+    return true;
+  }
+
   function azzeraPartita() {
     partita.turno = 0;
     partita.colore = null;
@@ -891,6 +991,7 @@
 
   window.UniDashboard = Object.freeze({
     giocaCarta,
+    giocaCambioColore,
     azzeraPartita,
     impostaColoreManuale,
     cambiaLettera,
@@ -910,17 +1011,53 @@
 })();
 
 
+let finisciSceltaColore = null;
+
+function scegliColore(colore) {
+  if (!finisciSceltaColore) return;
+  const fine = finisciSceltaColore;
+  finisciSceltaColore = null;
+  window.UniVoce?.ferma();
+  document.documentElement.removeAttribute('data-cambio-colore');
+  fine(colore);
+}
+
+async function aspettaColore() {
+  if (finisciSceltaColore) return;
+  document.documentElement.setAttribute('data-cambio-colore', '');
+  const scelta = new Promise((fine) => {
+    finisciSceltaColore = fine;
+  });
+  window.UniVoce?.ascolta().then(scegliColore);
+  const colore = await scelta;
+  if (colore) UniDashboard.giocaCambioColore(colore);
+}
+
 addEventListener('carta-rilevata', (e) => {
-  UniDashboard.giocaCarta(e.detail.carta, e.detail.colore);
+  if (document.documentElement.hasAttribute('data-intro')) return;
+  if (finisciSceltaColore) return;
+  if (e.detail.carta === 'cambia') aspettaColore();
+  else UniDashboard.giocaCarta(e.detail.carta, e.detail.colore);
 });
 
 const TASTI_COLORE = { r: 'rosso', y: 'giallo', g: 'verde', b: 'blu' };
 
 addEventListener('keydown', (e) => {
   if (e.metaKey || e.ctrlKey) return;
+  if (document.documentElement.hasAttribute('data-intro') && e.key !== 'Escape') return;
 
-  if (e.key === '+') UniDashboard.giocaCarta('+2');
+  if (finisciSceltaColore) {
+    if (TASTI_COLORE[e.key.toLowerCase()]) scegliColore(TASTI_COLORE[e.key.toLowerCase()]);
+    else if (e.key === 'Escape') {
+      scegliColore(null);
+      UniDashboard.azzeraPartita();
+    }
+    return;
+  }
+
+  if (e.key.toLowerCase() === 'c') aspettaColore();
+  else if (e.key === '+') UniDashboard.giocaCarta('+2');
   else if (/^[0-9/]$/.test(e.key)) UniDashboard.giocaCarta(e.key);
   else if (TASTI_COLORE[e.key.toLowerCase()]) UniDashboard.impostaColoreManuale(TASTI_COLORE[e.key.toLowerCase()]);
   else if (e.key === 'Escape') UniDashboard.azzeraPartita();
-})
+}); 

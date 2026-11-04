@@ -24,6 +24,11 @@
   const PAUSA_TURNI = 1500;
   const BUCO_MIN = 15;
 
+  const CAMBIO_COLORE_MIN = 0.004;
+  const CAMBIO_COLORE_VICINANZA = 0.9;
+  const CAMBIO_COLORE_QUOTA = 0.15;
+  const CAMBIO_COLORE_CONTATTO = 3;
+
   const SLASH_ALLUNGAMENTO = 8;
   const SLASH_RIEMPIMENTO = 0.75;
 
@@ -100,6 +105,9 @@
     movimento = cambiati / luce.length;
     lucePrecedente = luce;
 
+    const cambio = cercaCambioColore(griglia, colonne, righe, zx, zy);
+    if (cambio) return cambio;
+
     const visitato = new Uint8Array(griglia.length);
     const pila = new Int32Array(griglia.length);
 
@@ -159,6 +167,98 @@
 
     const principale = buchi.reduce((a, b) => (b.n > a.n ? b : a));
     return descriviGruppo([principale]);
+  }
+
+  function cercaCambioColore(griglia, colonne, righe, zx, zy) {
+    const gruppo = new Int32Array(griglia.length);
+    const pila = new Int32Array(griglia.length);
+    const macchie = [null, null, null, null];
+    let ultimoGruppo = 0;
+
+    for (let inizio = 0; inizio < griglia.length; inizio += 1) {
+      const colore = griglia[inizio];
+      if (colore < 0 || gruppo[inizio]) continue;
+
+      const numero = ++ultimoGruppo;
+      let n = 0;
+      let sx = 0;
+      let sy = 0;
+      let cima = 0;
+      pila[cima++] = inizio;
+      gruppo[inizio] = numero;
+
+      while (cima > 0) {
+        const cella = pila[--cima];
+        const gx = cella % colonne;
+        const gy = (cella - gx) / colonne;
+        n += 1;
+        sx += gx;
+        sy += gy;
+
+        const vicini = [
+          gx > 0 ? cella - 1 : -1,
+          gx < colonne - 1 ? cella + 1 : -1,
+          gy > 0 ? cella - colonne : -1,
+          gy < righe - 1 ? cella + colonne : -1,
+        ];
+        for (const v of vicini) {
+          if (v >= 0 && !gruppo[v] && griglia[v] === colore) {
+            gruppo[v] = numero;
+            pila[cima++] = v;
+          }
+        }
+      }
+
+      if (!macchie[colore] || n > macchie[colore].n) macchie[colore] = { numero, n, x: sx / n, y: sy / n };
+    }
+
+    const minimo = (CAMBIO_COLORE_MIN * canvas.width * canvas.height) / (PASSO * PASSO);
+    if (macchie.some((macchia) => !macchia || macchia.n < minimo)) return null;
+
+    const area = macchie.reduce((somma, macchia) => somma + macchia.n, 0);
+    if (macchie.some((macchia) => macchia.n < area * CAMBIO_COLORE_QUOTA)) return null;
+
+    const raggio = Math.sqrt(area / Math.PI);
+    const cx = macchie.reduce((somma, macchia) => somma + macchia.x, 0) / macchie.length;
+    const cy = macchie.reduce((somma, macchia) => somma + macchia.y, 0) / macchie.length;
+    if (macchie.some((macchia) => Math.hypot(macchia.x - cx, macchia.y - cy) > raggio * CAMBIO_COLORE_VICINANZA)) return null;
+    if (!macchieVicine(macchie, gruppo, griglia, colonne, righe)) return null;
+
+    return {
+      colore: 'tutti',
+      cambiaColore: true,
+      cx: zx + cx * PASSO,
+      cy: zy + cy * PASSO,
+      lato: raggio * 2 * PASSO,
+      area,
+      pezzi: macchie.length,
+    };
+  }
+
+  function macchieVicine(macchie, gruppo, griglia, colonne, righe) {
+    const contatti = macchie.map(() => new Set());
+    const passi = [];
+    for (let d = 1; d <= CAMBIO_COLORE_CONTATTO; d += 1) passi.push([d, 0], [0, d], [d, d], [d, -d]);
+
+    for (let gy = 0; gy < righe; gy += 1) {
+      for (let gx = 0; gx < colonne; gx += 1) {
+        const cella = gy * colonne + gx;
+        const a = griglia[cella];
+        if (a < 0 || gruppo[cella] !== macchie[a].numero) continue;
+
+        for (const [dx, dy] of passi) {
+          const vx = gx + dx;
+          const vy = gy + dy;
+          if (vx >= colonne || vy < 0 || vy >= righe) continue;
+          const vicina = vy * colonne + vx;
+          const b = griglia[vicina];
+          if (b < 0 || b === a || gruppo[vicina] !== macchie[b].numero) continue;
+          contatti[a].add(b);
+          contatti[b].add(a);
+        }
+      }
+    }
+    return contatti.every((altri) => altri.size >= 2);
   }
 
   function descriviGruppo(gruppo) {
@@ -368,6 +468,7 @@
   }
 
   function riconosci(simbolo) {
+    if (simbolo.cambiaColore) return 'cambia';
     if (eSlash(simbolo)) return '/';
 
     const punti = puntiDi(ritagliaSimbolo(simbolo), LATO_LETTURA);
@@ -424,6 +525,7 @@
   }
 
   function contaBuchi(simbolo) {
+    if (simbolo.cambiaColore) return 0;
     const lato = LATO_LETTURA;
     let forma = ritagliaSimbolo(simbolo);
     forma = allarga(allarga(forma, lato, 1), lato, 1);
@@ -481,7 +583,8 @@
 
     ultimaGiocata = { simbolo, testo, buchi: buchiCarta, tempo: adesso };
     console.debug(`[UniWebcam] carta ${testo} ${simbolo.colore}`);
-    window.dispatchEvent(new CustomEvent('carta-rilevata', { detail: { carta: testo, colore: simbolo.colore } }));
+    const colore = simbolo.cambiaColore ? null : simbolo.colore;
+    window.dispatchEvent(new CustomEvent('carta-rilevata', { detail: { carta: testo, colore } }));
   }
 
   function ciclo() {
@@ -501,7 +604,7 @@
     if (movimento > QUOTA_MOVIMENTO) disturbato = true;
 
     if (simbolo && conteggio >= FOTOGRAMMI_STABILI) {
-      coloreStabile = simbolo.colore;
+      if (!simbolo.cambiaColore) coloreStabile = simbolo.colore;
       if (modelli && disturbato) {
         voti = [...voti, riconosci(simbolo)].slice(-VOTI);
         buchi = [...buchi, contaBuchi(simbolo)].slice(-VOTI);

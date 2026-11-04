@@ -254,7 +254,7 @@ canvas {
 .linee-orizzontali text,
 .linee-verticali text {
   font-family: var(--carattere);
-  font-size: 25px;
+  font-size: calc(25px * var(--scala-poster, 1));
   fill: color-mix(in srgb, var(--su-accento) 90%, transparent);
 }
 

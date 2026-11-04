@@ -1,0 +1,139 @@
+.intro {
+  --italic-angle: -14deg;
+  --italic-duration: 0.4s;
+  --italic-delay: 1.2s;
+  --italic-stagger: 0.3s;
+  --initial-spacing: 1px;
+  --weight-duration: 0.5s;
+  --margine: min(5.3vw, 5.3vh);
+  --lato-intro: min(50vw - 2 * var(--margine), 100dvh - 2 * var(--margine));
+
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+}
+
+.intro .container {
+  position: absolute;
+  left: var(--intro-x, calc(50vw + var(--margine) + (50vw - 2 * var(--margine) - var(--lato-intro)) / 2));
+  top: var(--intro-y, calc(var(--margine) + (100dvh - 2 * var(--margine) - var(--lato-intro)) / 2));
+  width: var(--intro-larghezza, var(--lato-intro));
+  height: var(--intro-altezza, var(--lato-intro));
+  padding: 20px 30px;
+  border-radius: var(--intro-raggio, calc(var(--lato-intro) / 100));
+  background: var(--bianco);
+  container-type: size;
+}
+
+.intro .text {
+  margin: 0;
+  font-family: 'Unisoft77', sans-serif;
+  font-size: min(100cqh / 6, 100cqw / 5.6);
+  font-weight: 300;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: var(--initial-spacing);
+  color: var(--sfondo);
+  white-space: nowrap;
+  animation:
+    appear 0.5s ease-out both,
+    increaseWeight var(--weight-duration) ease-in-out forwards;
+  animation-delay: var(--appear-delay), var(--weight-delay);
+}
+
+.intro .italic {
+  display: inline-block;
+  transform-origin: center center;
+  animation: smoothItalic var(--italic-duration) ease-in-out forwards;
+  animation-delay: calc(var(--italic-delay) + var(--italic-step) * var(--italic-stagger));
+}
+
+.intro .weight-1 {
+  --appear-delay: 0s;
+  --weight-delay: 0.2s;
+  --target-weight: 300;
+  --target-spacing: 0.1px;
+  --italic-step: 0;
+}
+
+.intro .weight-2 {
+  --appear-delay: 0.2s;
+  --weight-delay: 0.4s;
+  --target-weight: 400;
+  --target-spacing: 1px;
+  --italic-step: 1;
+}
+
+.intro .weight-3 {
+  --appear-delay: 0.4s;
+  --weight-delay: 0.6s;
+  --target-weight: 500;
+  --target-spacing: 2px;
+  --italic-step: 2;
+}
+
+.intro .weight-4 {
+  --appear-delay: 0.6s;
+  --weight-delay: 0.8s;
+  --target-weight: 700;
+  --target-spacing: 4px;
+  --italic-step: 3;
+}
+
+.intro .weight-5 {
+  --appear-delay: 0.8s;
+  --weight-delay: 1s;
+  --target-weight: 800;
+  --target-spacing: 5px;
+  --italic-step: 4;
+}
+
+.intro .weight-6 {
+  --appear-delay: 1s;
+  --weight-delay: 1.2s;
+  --target-weight: 900;
+  --target-spacing: 6px;
+  --italic-step: 5;
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes increaseWeight {
+  from {
+    font-weight: 300;
+    letter-spacing: var(--initial-spacing);
+  }
+
+  to {
+    font-weight: var(--target-weight);
+    letter-spacing: var(--target-spacing);
+  }
+}
+
+@keyframes smoothItalic {
+  from {
+    transform: skewX(0deg);
+  }
+
+  to {
+    transform: skewX(var(--italic-angle));
+  }
+}
+
+:root[data-intro] .webcam {
+  background: #000;
+}
+
+:root[data-intro] .webcam canvas {
+  visibility: hidden;
+}
