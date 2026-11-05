@@ -109,13 +109,14 @@ canvas {
 }
 
 .webcam video {
-  display: none;
-}
-
-.webcam canvas {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.webcam canvas {
+  display: none;
 }
 
 .zona-dashboard {

@@ -19,19 +19,30 @@
   }
 
   function nelQuadrato(punto) {
-    const larghezza = video.videoWidth || 4;
-    const altezza = video.videoHeight || 3;
-    const quota = altezza / larghezza;
+    const quota = (canvas?.height ?? 3) / (canvas?.width ?? 4);
     return {
       x: ((punto.x - (1 - quota) / 2) / quota) * 100,
       y: punto.y * 100,
     };
   }
 
+  function ritaglio() {
+    const larghezza = video.videoWidth || canvas?.width || 640;
+    const altezza = video.videoHeight || canvas?.height || 480;
+    const formato = (canvas?.width ?? 4) / (canvas?.height ?? 3);
+    let w = larghezza;
+    let h = altezza;
+    if (larghezza / altezza > formato) w = altezza * formato;
+    else h = larghezza / formato;
+    return { larghezza, altezza, x: (larghezza - w) / 2, y: (altezza - h) / 2, w, h };
+  }
+
+  let taglio = ritaglio();
+
   function nellaWebcam(punto) {
     return {
-      x: punto.x * (canvas?.width ?? 640),
-      y: punto.y * (canvas?.height ?? 480),
+      x: taglio.x + punto.x * taglio.w,
+      y: taglio.y + punto.y * taglio.h,
     };
   }
 
@@ -48,7 +59,8 @@
           const punta = PUNTE.includes(p);
           const cerchio = document.createElementNS(NAMESPACE_SVG, 'circle');
           cerchio.setAttribute('class', punta ? 'punta' : 'articolazione');
-          cerchio.setAttribute('r', punta ? disegno.punta : disegno.articolazione);
+          cerchio.dataset.raggio = punta ? disegno.punta : disegno.articolazione;
+          cerchio.setAttribute('r', cerchio.dataset.raggio);
           cerchio.setAttribute('visibility', 'hidden');
           disegno.svg.append(cerchio);
           return cerchio;
@@ -56,8 +68,31 @@
       ),
     }));
 
+  const disegnoWebcam = disegni.find((disegno) => disegno.posizione === nellaWebcam);
+
+  function adattaAlVideo() {
+    taglio = ritaglio();
+    if (!disegnoWebcam) return;
+    disegnoWebcam.svg.setAttribute('viewBox', `0 0 ${taglio.larghezza} ${taglio.altezza}`);
+    const scala = taglio.w / (canvas?.width ?? 640);
+    disegnoWebcam.cerchi.flat().forEach((cerchio) => {
+      cerchio.setAttribute('r', (cerchio.dataset.raggio * scala).toFixed(2));
+    });
+  }
+
+  video.addEventListener('loadedmetadata', adattaAlVideo);
+  video.addEventListener('resize', adattaAlVideo);
+  if (video.videoWidth) adattaAlVideo();
+
+  function nelRitaglio(punti) {
+    return punti.map(({ x, y }) => ({
+      x: (x * taglio.larghezza - taglio.x) / taglio.w,
+      y: (y * taglio.altezza - taglio.y) / taglio.h,
+    }));
+  }
+
   function disegnaMani(risultati) {
-    const trovate = risultati.multiHandLandmarks ?? [];
+    const trovate = (risultati.multiHandLandmarks ?? []).map(nelRitaglio);
     const palmo = trovate[0]?.[PUNTO_PALMO];
     window.dispatchEvent(new CustomEvent('mano-mossa', { detail: palmo ? { x: palmo.x, y: palmo.y } : null }));
 

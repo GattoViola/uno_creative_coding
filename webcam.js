@@ -2,6 +2,7 @@
   'use strict';
 
   const ZONA = { larghezza: 0.6, altezza: 0.7 };
+  const RISOLUZIONE_WEBCAM = { larghezza: 3840, altezza: 2160 };
 
   const PASSO = 2;
   const SATURAZIONE_MIN = 0.4;
@@ -75,9 +76,19 @@
   const video = trova('video');
   const canvas = trova('canvas');
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.imageSmoothingQuality = 'high';
+
+  const riduzione = document.createElement('canvas');
+  riduzione.width = canvas.width;
+  riduzione.height = canvas.height;
+  const ctxRiduzione = riduzione.getContext('2d');
+  ctxRiduzione.imageSmoothingQuality = 'high';
 
   const lettura = document.createElement('canvas');
-  const ctxLettura = lettura.getContext('2d', { willReadFrequently: true });
+  const ctxLettura = lettura.getContext('2d');
+  ctxLettura.imageSmoothingQuality = 'high';
+
+  let taglio = { x: 0, y: 0, scala: 1 };
 
   let flusso = null;
   let modelli = null;
@@ -623,9 +634,9 @@
     ctxLettura.fillRect(0, 0, lato, lato);
     ctxLettura.save();
     ctxLettura.translate(lato / 2, lato / 2);
-    ctxLettura.scale(scala, scala);
-    ctxLettura.translate(-simbolo.cx, -simbolo.cy);
-    ctxLettura.drawImage(canvas, 0, 0);
+    ctxLettura.scale(scala / taglio.scala, scala / taglio.scala);
+    ctxLettura.translate(-(taglio.x + simbolo.cx * taglio.scala), -(taglio.y + simbolo.cy * taglio.scala));
+    ctxLettura.drawImage(video, 0, 0);
     ctxLettura.restore();
 
     const { data } = ctxLettura.getImageData(0, 0, lato, lato);
@@ -937,10 +948,23 @@
     window.dispatchEvent(new CustomEvent('carta-rilevata', { detail: { carta, colore } }));
   }
 
+  function copiaImmagine() {
+    const larghezza = video.videoWidth || canvas.width;
+    const altezza = video.videoHeight || canvas.height;
+    const formato = canvas.width / canvas.height;
+    let w = larghezza;
+    let h = altezza;
+    if (larghezza / altezza > formato) w = altezza * formato;
+    else h = larghezza / formato;
+    taglio = { x: (larghezza - w) / 2, y: (altezza - h) / 2, scala: w / canvas.width };
+    ctxRiduzione.drawImage(video, taglio.x, taglio.y, w, h, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(riduzione, 0, 0);
+  }
+
   function ciclo() {
     if (!flusso) return;
 
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    copiaImmagine();
     const simbolo = trovaSimbolo();
 
     if (stessoSimbolo(simbolo, precedente, 0.15)) conteggio += 1;
@@ -970,7 +994,11 @@
     if (flusso) return true;
     try {
       flusso = await navigator.mediaDevices.getUserMedia({
-        video: { width: canvas.width, height: canvas.height },
+        video: {
+          width: { ideal: RISOLUZIONE_WEBCAM.larghezza },
+          aspectRatio: { ideal: RISOLUZIONE_WEBCAM.larghezza / RISOLUZIONE_WEBCAM.altezza },
+          frameRate: { ideal: 30 },
+        },
         audio: false,
       });
     } catch (errore) {
@@ -987,6 +1015,7 @@
       return false;
     }
     contenitore.hidden = false;
+    console.info(`[UniWebcam] webcam a ${video.videoWidth}×${video.videoHeight}, analisi a ${canvas.width}×${canvas.height}`);
     requestAnimationFrame(ciclo);
     return true;
   }

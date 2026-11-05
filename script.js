@@ -871,6 +871,7 @@
     colore: null,
     gradino: 0,
     coloreManuale: null,
+    partenza: false,
     storia: [],
   };
 
@@ -886,11 +887,34 @@
     partita.coloreManuale = nome;
   }
 
+  function giocaPartenza(carta, coloreCarta) {
+    const colore = nomeColore(coloreCarta) ?? window.UniWebcam?.coloreRilevato() ?? partita.coloreManuale;
+    const [peso, nomePeso] = PESI[0];
+    partita.partenza = true;
+    partita.gradino = 0;
+    partita.colore = colore;
+
+    cambiaLettera(carta);
+    if (colore) cambiaColore(colore);
+    aggiornaInfo({
+      turno: 0,
+      ultimaCarta: carta,
+      evento: `start ${nomePeso}`,
+      colore: COLORI_PER_TABELLA[colore] ?? '—',
+      peso,
+      corsivo: stato.corsivo,
+      asse: 'weight',
+    });
+    impostaStoricoPeso([peso]);
+    return 'partenza';
+  }
+
   function giocaCarta(carta, coloreCarta) {
     if (!GLIFI_AMMESSI.includes(carta)) {
       console.warn('[UniDashboard] carta non ammessa:', carta);
       return false;
     }
+    if (!partita.partenza && partita.turno === 0) return giocaPartenza(carta, coloreCarta);
 
     const colore = nomeColore(coloreCarta) ?? window.UniWebcam?.coloreRilevato() ?? partita.coloreManuale;
     const slash = carta === '/';
@@ -928,7 +952,7 @@
     aggiornaInfo({ ...dati, asse: carta === '/' ? 'italic' : 'weight' });
     aggiornaGiocatore(giocatore, dati);
 
-    const storico = partita.turno === 1 ? [] : storicoPeso;
+    const storico = partita.turno === 1 && !partita.partenza ? [] : storicoPeso;
     impostaStoricoPeso([...storico, peso].slice(-(GRAFICO.colonne + 1)));
     return true;
   }
@@ -961,7 +985,7 @@
     aggiornaInfo({ ...dati, asse: 'weight' });
     aggiornaGiocatore(giocatore, dati);
 
-    const storico = partita.turno === 1 ? [] : storicoPeso;
+    const storico = partita.turno === 1 && !partita.partenza ? [] : storicoPeso;
     impostaStoricoPeso([...storico, peso].slice(-(GRAFICO.colonne + 1)));
     return true;
   }
@@ -1035,6 +1059,7 @@
     partita.turno = 0;
     partita.colore = null;
     partita.gradino = 0;
+    partita.partenza = false;
     azzeraTurni();
     azzeraColore();
     cambiaStile({ peso: PESI[0][0], corsivo: false });
@@ -1066,6 +1091,7 @@
 
   window.UniDashboard = Object.freeze({
     giocaCarta,
+    partitaIniziata: () => partita.partenza || partita.turno > 0,
     giocaCambioColore,
     riepilogoPartita,
     azzeraPartita,
@@ -1112,9 +1138,18 @@ async function aspettaColore() {
 }
 
 function giocaCarta(carta, colore) {
-  UniDashboard.giocaCarta(carta, colore);
-  if (carta === '+2') window.UniPiuDue?.mostra();
+  const giocata = UniDashboard.giocaCarta(carta, colore);
+  if (carta === '+2' && giocata === true) window.UniPiuDue?.mostra();
 }
+
+let cartaSulTavolo = null;
+
+new MutationObserver(() => {
+  if (document.documentElement.hasAttribute('data-intro') || !cartaSulTavolo) return;
+  const { carta, colore } = cartaSulTavolo;
+  cartaSulTavolo = null;
+  if (!UniDashboard.partitaIniziata()) giocaCarta(carta, colore);
+}).observe(document.documentElement, { attributes: true, attributeFilter: ['data-intro'] });
 
 function finePartita() {
   if (document.documentElement.hasAttribute('data-finale')) return;
@@ -1123,7 +1158,11 @@ function finePartita() {
 
 addEventListener('carta-rilevata', (e) => {
   const radice = document.documentElement;
-  if (radice.hasAttribute('data-intro') || radice.hasAttribute('data-finale')) return;
+  if (radice.hasAttribute('data-intro')) {
+    if (!['cambia', 'retro'].includes(e.detail.carta)) cartaSulTavolo = e.detail;
+    return;
+  }
+  if (radice.hasAttribute('data-finale')) return;
   if (finisciSceltaColore) return;
   if (e.detail.carta === 'cambia') aspettaColore();
   else if (e.detail.carta === 'retro') finePartita();

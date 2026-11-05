@@ -12,6 +12,7 @@
   const quadrato = schermata.querySelector('.quadrato-piu-due');
   const cifra = schermata.querySelector('.cifra-piu-due');
   const dashboard = document.getElementById('dashboard');
+  const poster = document.getElementById('container-principale');
   const movimentoRidotto = window.matchMedia('(prefers-reduced-motion: reduce)');
   const misura = document.createElement('canvas').getContext('2d');
   let chiusura = null;
@@ -25,6 +26,16 @@
     schermata.style.setProperty('--piu-due-larghezza', `${area.width}px`);
     schermata.style.setProperty('--piu-due-altezza', `${area.height}px`);
     if (riquadro) schermata.style.setProperty('--piu-due-raggio', getComputedStyle(riquadro).borderTopLeftRadius);
+    partiDalPoster(area);
+  }
+
+  function partiDalPoster(area) {
+    if (!poster || !area.width || !area.height) return;
+    const partenza = poster.getBoundingClientRect();
+    schermata.style.setProperty('--piu-due-da-x', `${partenza.left - area.left}px`);
+    schermata.style.setProperty('--piu-due-da-y', `${partenza.top - area.top}px`);
+    schermata.style.setProperty('--piu-due-da-sx', partenza.width / area.width);
+    schermata.style.setProperty('--piu-due-da-sy', partenza.height / area.height);
   }
 
   if (dashboard) {
@@ -67,7 +78,9 @@
     if (movimentoRidotto.matches) chiusura = setTimeout(nascondi, DURATA_RIDOTTA);
   }
 
-  quadrato.addEventListener('animationend', nascondi);
+  quadrato.addEventListener('animationend', (e) => {
+    if (e.target === quadrato) nascondi();
+  });
   addEventListener('keydown', (e) => {
     if (e.key === 'Escape') nascondi();
   });
