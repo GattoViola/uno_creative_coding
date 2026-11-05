@@ -1,0 +1,120 @@
+.finale {
+  --margine: min(5.3vw, 5.3vh);
+  --lato-finale: min(50vw - 2 * var(--margine), 100dvh - 2 * var(--margine));
+  --colore-guida: rgb(255 255 255 / 0.22);
+  --durata-riga: 0.35s;
+
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+}
+
+.finale .pannello {
+  position: absolute;
+  left: var(--finale-x, calc(50vw + var(--margine) + (50vw - 2 * var(--margine) - var(--lato-finale)) / 2));
+  top: var(--finale-y, calc(var(--margine) + (100dvh - 2 * var(--margine) - var(--lato-finale)) / 2));
+  width: var(--finale-larghezza, var(--lato-finale));
+  height: var(--finale-altezza, var(--lato-finale));
+  overflow: hidden;
+  border-radius: var(--finale-raggio, calc(var(--lato-finale) / 100));
+  background: #000;
+  color: var(--bianco);
+  container-type: size;
+}
+
+.finale .disegno-finale {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.finale .guide line {
+  stroke: var(--colore-guida);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.finale .titolo-finale {
+  font-family: var(--carattere);
+  font-style: normal;
+  font-kerning: none;
+  fill: var(--bianco);
+}
+
+.finale .dati-finale {
+  position: absolute;
+  top: 62%;
+  right: 5%;
+  bottom: 5%;
+  left: 5%;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  column-gap: 3cqw;
+  font-family: var(--carattere);
+  font-size: max(9px, 1.45cqw);
+  line-height: 1.25;
+}
+
+.finale .colonna-finale {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4em;
+  min-width: 0;
+}
+
+.finale .gruppi-partita {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 3cqw;
+}
+
+.finale .gruppo-finale {
+  display: grid;
+  grid-template-columns: 9.5em minmax(0, 1fr);
+  column-gap: 0.6em;
+  row-gap: 0.15em;
+  align-content: start;
+  margin: 0;
+}
+
+.finale .colonna-finale[data-colonna='giocatori'] .gruppo-finale {
+  grid-template-columns: 7.5em minmax(0, 1fr);
+}
+
+.finale .riga-finale {
+  display: contents;
+}
+
+.finale .riga-finale dt {
+  font-weight: 550;
+}
+
+.finale .riga-finale dd {
+  margin: 0;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+.finale .colonna-finale[data-colonna='giocatori'] .riga-finale:first-child > * {
+  font-weight: 800;
+}
+
+.finale .riga-finale > * {
+  opacity: 0;
+  transform: translateY(0.5em);
+  transition:
+    opacity var(--durata-riga) ease,
+    transform var(--durata-riga) ease;
+}
+
+.finale .riga-finale.visibile > * {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .finale .riga-finale > * {
+    transition: none;
+  }
+}

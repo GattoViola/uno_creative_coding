@@ -871,7 +871,11 @@
     colore: null,
     gradino: 0,
     coloreManuale: null,
+    storia: [],
   };
+
+  const giocatoreDelTurno = (turno) => (turno % 2 === 1 ? 1 : 2);
+  const CARTA_CAMBIA_COLORE = 'change color';
 
   function impostaColoreManuale(colore) {
     const nome = nomeColore(colore);
@@ -916,10 +920,13 @@
       corsivo,
     };
 
+    const giocatore = giocatoreDelTurno(partita.turno);
+    partita.storia.push({ giocatore, carta, colore, peso, corsivo });
+
     cambiaLettera(carta);
     if (colore) cambiaColore(colore);
     aggiornaInfo({ ...dati, asse: carta === '/' ? 'italic' : 'weight' });
-    aggiornaGiocatore(partita.turno % 2 === 1 ? 1 : 2, dati);
+    aggiornaGiocatore(giocatore, dati);
 
     const storico = partita.turno === 1 ? [] : storicoPeso;
     impostaStoricoPeso([...storico, peso].slice(-(GRAFICO.colonne + 1)));
@@ -940,23 +947,91 @@
     const [peso, nomePeso] = PESI[partita.gradino];
     const dati = {
       turno: partita.turno,
-      ultimaCarta: 'wild',
+      ultimaCarta: CARTA_CAMBIA_COLORE,
       evento: `reset ${nomePeso}`,
       colore: COLORI_PER_TABELLA[colore],
       peso,
       corsivo: stato.corsivo,
     };
 
+    const giocatore = giocatoreDelTurno(partita.turno);
+    partita.storia.push({ giocatore, carta: CARTA_CAMBIA_COLORE, colore, peso, corsivo: stato.corsivo });
+
     cambiaColore(colore);
     aggiornaInfo({ ...dati, asse: 'weight' });
-    aggiornaGiocatore(partita.turno % 2 === 1 ? 1 : 2, dati);
+    aggiornaGiocatore(giocatore, dati);
 
     const storico = partita.turno === 1 ? [] : storicoPeso;
     impostaStoricoPeso([...storico, peso].slice(-(GRAFICO.colonne + 1)));
     return true;
   }
 
+  const NOMI_PESI = { light: 'Light', regular: 'Regular', medium: 'Medium', bold: 'Bold', black: 'Black', xblack: 'XBlack' };
+
+  function piuFrequente(valori) {
+    const conti = new Map();
+    valori.forEach((valore) => conti.set(valore, (conti.get(valore) ?? 0) + 1));
+    let migliore = null;
+    conti.forEach((conto, valore) => {
+      if (!migliore || conto > migliore.conto) migliore = { valore, conto };
+    });
+    return migliore?.valore ?? null;
+  }
+
+  function serieDiColore(turni) {
+    let migliore = null;
+    let attuale = null;
+    turni.forEach(({ colore }) => {
+      if (!colore) return;
+      attuale = attuale?.colore === colore ? { colore, lunghezza: attuale.lunghezza + 1 } : { colore, lunghezza: 1 };
+      if (!migliore || attuale.lunghezza > migliore.lunghezza) migliore = attuale;
+    });
+    return migliore;
+  }
+
+  function riepilogoPartita() {
+    const turni = partita.storia;
+    const vincitore = giocatoreDelTurno(partita.turno + 1);
+    const conta = (lista, condizione) => lista.filter(condizione).length;
+    const inTabella = (colore) => COLORI_PER_TABELLA[colore] ?? '—';
+    const colori = turni.map((turno) => turno.colore).filter(Boolean);
+    const cambiColore = colori.filter((colore, i) => i > 0 && colore !== colori[i - 1]).length;
+    const serie = serieDiColore(turni);
+    const pesoMassimo = (lista) => (lista.length ? Math.max(...lista.map((turno) => turno.peso)) : '—');
+
+    const generale = [
+      ['Rounds', turni.length + 1],
+      ['Winner', `player ${vincitore}`],
+      ['Dominant color', inTabella(piuFrequente(colori))],
+      ['Color switches', cambiColore],
+      ['Longest streak', serie ? `${serie.lunghezza} ${inTabella(serie.colore)}` : '—'],
+      ['+2 played', conta(turni, (turno) => turno.carta === '+2')],
+      ['Change color cards', conta(turni, (turno) => turno.carta === CARTA_CAMBIA_COLORE)],
+      ['Italic switches', conta(turni, (turno) => turno.carta === '/')],
+      ['Heaviest weight', pesoMassimo(turni)],
+    ];
+
+    const pesi = PESI.map(([peso, nome]) => [`${NOMI_PESI[nome]} ${peso}`, conta(turni, (turno) => turno.peso === peso)]);
+
+    const giocatori = [1, 2].map((numero) => {
+      const suoi = turni.filter((turno) => turno.giocatore === numero);
+      const haVinto = numero === vincitore;
+      return [
+        ['PLAYER', numero],
+        ['Result', haVinto ? 'winner' : '2nd'],
+        ['Cards played', suoi.length + (haVinto ? 1 : 0)],
+        ['Last card', haVinto ? 'back' : (suoi[suoi.length - 1]?.carta ?? '—')],
+        ['+2 played', conta(suoi, (turno) => turno.carta === '+2')],
+        ['Top color', inTabella(piuFrequente(suoi.map((turno) => turno.colore).filter(Boolean)))],
+        ['Max weight', pesoMassimo(suoi)],
+      ];
+    });
+
+    return { vincitore, generale, pesi, giocatori };
+  }
+
   function azzeraPartita() {
+    partita.storia = [];
     partita.turno = 0;
     partita.colore = null;
     partita.gradino = 0;
@@ -992,6 +1067,7 @@
   window.UniDashboard = Object.freeze({
     giocaCarta,
     giocaCambioColore,
+    riepilogoPartita,
     azzeraPartita,
     impostaColoreManuale,
     cambiaLettera,
@@ -1035,18 +1111,31 @@ async function aspettaColore() {
   window.UniCambioColore?.chiudi(colore);
 }
 
+function giocaCarta(carta, colore) {
+  UniDashboard.giocaCarta(carta, colore);
+  if (carta === '+2') window.UniPiuDue?.mostra();
+}
+
+function finePartita() {
+  if (document.documentElement.hasAttribute('data-finale')) return;
+  window.UniFinale?.apri(UniDashboard.riepilogoPartita());
+}
+
 addEventListener('carta-rilevata', (e) => {
-  if (document.documentElement.hasAttribute('data-intro')) return;
+  const radice = document.documentElement;
+  if (radice.hasAttribute('data-intro') || radice.hasAttribute('data-finale')) return;
   if (finisciSceltaColore) return;
   if (e.detail.carta === 'cambia') aspettaColore();
-  else UniDashboard.giocaCarta(e.detail.carta, e.detail.colore);
+  else if (e.detail.carta === 'retro') finePartita();
+  else giocaCarta(e.detail.carta, e.detail.colore);
 });
 
 const TASTI_COLORE = { r: 'rosso', y: 'giallo', g: 'verde', b: 'blu' };
 
 addEventListener('keydown', (e) => {
   if (e.metaKey || e.ctrlKey) return;
-  if (document.documentElement.hasAttribute('data-intro') && e.key !== 'Escape') return;
+  const radice = document.documentElement;
+  if ((radice.hasAttribute('data-intro') || radice.hasAttribute('data-finale')) && e.key !== 'Escape') return;
 
   if (finisciSceltaColore) {
     if (TASTI_COLORE[e.key.toLowerCase()]) scegliColore(TASTI_COLORE[e.key.toLowerCase()]);
@@ -1058,8 +1147,9 @@ addEventListener('keydown', (e) => {
   }
 
   if (e.key.toLowerCase() === 'c') aspettaColore();
-  else if (e.key === '+') UniDashboard.giocaCarta('+2');
-  else if (/^[0-9/]$/.test(e.key)) UniDashboard.giocaCarta(e.key);
+  else if (e.key.toLowerCase() === 'f') finePartita();
+  else if (e.key === '+') giocaCarta('+2');
+  else if (/^[0-9/]$/.test(e.key)) giocaCarta(e.key);
   else if (TASTI_COLORE[e.key.toLowerCase()]) UniDashboard.impostaColoreManuale(TASTI_COLORE[e.key.toLowerCase()]);
   else if (e.key === 'Escape') UniDashboard.azzeraPartita();
 });

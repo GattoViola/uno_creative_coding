@@ -30,12 +30,45 @@
   const CAMBIO_COLORE_CONTATTO = 3;
   const CAMBIO_COLORE_CANDIDATE = 4;
 
+  const RETRO = {
+    nero: 70,
+    areaMin: 0.015,
+    areaMax: 0.15,
+    riempimento: 0.8,
+    allungamentoMin: 1.2,
+    allungamentoMax: 4.5,
+    quotaNero: 0.3,
+    quotaVerdeBlu: 0.03,
+  };
+
+  const RETRO_UNO = {
+    areaMin: 0.015,
+    areaMax: 0.15,
+    quotaNero: 0.15,
+    quotaRosso: 0.2,
+    quotaVerdeBlu: 0.03,
+    riempimento: 0.6,
+    cucitura: 1,
+  };
+
   const SLASH_ALLUNGAMENTO = 8;
   const SLASH_RIEMPIMENTO = 0.75;
 
   const COLORI = ['rosso', 'giallo', 'verde', 'blu'];
   const GLIFI_AMMESSI = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+2', '/'];
   const SIMBOLO_AL_CENTRO = { '+2': '+' };
+  const LETTURA_DUE_CARTE = 'due carte';
+  const DUE_CARTE_PIENEZZA = 0.85;
+  const DUE_CARTE_SOMIGLIANZA = 0.84;
+  const DUE_CARTE = {
+    larghezza: 172,
+    altezza: 255,
+    raggio: 16,
+    posizioni: [
+      [83, 0],
+      [0, 130],
+    ],
+  };
 
   const trova = (id) => document.getElementById(id);
   const contenitore = trova('webcam');
@@ -48,6 +81,7 @@
 
   let flusso = null;
   let modelli = null;
+  let modelliDueCarte = [];
 
   let precedente = null;
   let conteggio = 0;
@@ -89,11 +123,13 @@
     const righe = Math.ceil(altezzaZona / PASSO);
     const griglia = new Int8Array(colonne * righe);
     const luce = new Uint8Array(colonne * righe);
+    const nero = new Uint8Array(colonne * righe);
     for (let gy = 0; gy < righe; gy += 1) {
       for (let gx = 0; gx < colonne; gx += 1) {
         const i = (gy * PASSO * larghezzaZona + gx * PASSO) * 4;
         griglia[gy * colonne + gx] = coloreDelPixel(data[i], data[i + 1], data[i + 2]);
         luce[gy * colonne + gx] = (data[i] * 3 + data[i + 1] * 6 + data[i + 2]) / 10;
+        nero[gy * colonne + gx] = Math.max(data[i], data[i + 1], data[i + 2]) < RETRO.nero ? 1 : 0;
       }
     }
 
@@ -108,6 +144,9 @@
 
     const cambio = cercaCambioColore(griglia, colonne, righe, zx, zy);
     if (cambio) return cambio;
+
+    const retro = cercaRetro(nero, griglia, colonne, righe, zx, zy) ?? cercaRetroUno(nero, griglia, colonne, righe, zx, zy);
+    if (retro) return retro;
 
     const visitato = new Uint8Array(griglia.length);
     const pila = new Int32Array(griglia.length);
@@ -168,6 +207,213 @@
 
     const principale = buchi.reduce((a, b) => (b.n > a.n ? b : a));
     return descriviGruppo([principale]);
+  }
+
+  function cercaRetro(nero, griglia, colonne, righe, zx, zy) {
+    const fuori = new Uint8Array(nero.length);
+    const pila = new Int32Array(nero.length);
+    let cima = 0;
+
+    const entra = (cella) => {
+      if (!fuori[cella] && !nero[cella]) {
+        fuori[cella] = 1;
+        pila[cima++] = cella;
+      }
+    };
+    for (let gx = 0; gx < colonne; gx += 1) {
+      entra(gx);
+      entra((righe - 1) * colonne + gx);
+    }
+    for (let gy = 0; gy < righe; gy += 1) {
+      entra(gy * colonne);
+      entra(gy * colonne + colonne - 1);
+    }
+    while (cima > 0) {
+      const cella = pila[--cima];
+      const gx = cella % colonne;
+      if (gx > 0) entra(cella - 1);
+      if (gx < colonne - 1) entra(cella + 1);
+      if (cella >= colonne) entra(cella - colonne);
+      if (cella < nero.length - colonne) entra(cella + colonne);
+    }
+
+    const totale = canvas.width * canvas.height;
+    const visto = new Uint8Array(nero.length);
+    let migliore = null;
+
+    for (let inizio = 0; inizio < nero.length; inizio += 1) {
+      if (fuori[inizio] || visto[inizio]) continue;
+
+      const celle = [];
+      const colori = [0, 0, 0, 0];
+      let neri = 0;
+      let tocca = false;
+      let minX = Infinity;
+      let maxX = -Infinity;
+      let minY = Infinity;
+      let maxY = -Infinity;
+      cima = 0;
+      pila[cima++] = inizio;
+      visto[inizio] = 1;
+
+      while (cima > 0) {
+        const cella = pila[--cima];
+        const gx = cella % colonne;
+        const gy = (cella - gx) / colonne;
+        const x = zx + gx * PASSO;
+        const y = zy + gy * PASSO;
+        celle.push(x, y);
+        neri += nero[cella];
+        if (griglia[cella] >= 0) colori[griglia[cella]] += 1;
+        if (gx === 0 || gy === 0 || gx === colonne - 1 || gy === righe - 1) tocca = true;
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
+
+        const vicini = [
+          gx > 0 ? cella - 1 : -1,
+          gx < colonne - 1 ? cella + 1 : -1,
+          gy > 0 ? cella - colonne : -1,
+          gy < righe - 1 ? cella + colonne : -1,
+        ];
+        for (const v of vicini) {
+          if (v >= 0 && !fuori[v] && !visto[v]) {
+            visto[v] = 1;
+            pila[cima++] = v;
+          }
+        }
+      }
+
+      const n = celle.length / 2;
+      const area = (n * PASSO * PASSO) / totale;
+      if (tocca || area < RETRO.areaMin || area > RETRO.areaMax) continue;
+      if (neri / n < RETRO.quotaNero) continue;
+      if ((colori[2] + colori[3]) / n > RETRO.quotaVerdeBlu) continue;
+
+      const forma = misuraForma(celle);
+      if (forma.riempimento < RETRO.riempimento) continue;
+      if (forma.allungamento < RETRO.allungamentoMin || forma.allungamento > RETRO.allungamentoMax) continue;
+
+      if (!migliore || n > migliore.area) {
+        migliore = {
+          colore: 'nessuno',
+          retro: true,
+          cx: (minX + maxX) / 2,
+          cy: (minY + maxY) / 2,
+          lato: Math.hypot(maxX - minX, maxY - minY) + PASSO * 2,
+          area: n,
+          pezzi: 1,
+        };
+      }
+    }
+    return migliore;
+  }
+
+  function espandi(maschera, colonne, righe, raggio, valore) {
+    const orizzontale = new Uint8Array(maschera.length);
+    for (let gy = 0; gy < righe; gy += 1) {
+      for (let gx = 0; gx < colonne; gx += 1) {
+        let risultato = maschera[gy * colonne + gx];
+        for (let d = -raggio; d <= raggio && risultato !== valore; d += 1) {
+          const vx = gx + d;
+          if (vx >= 0 && vx < colonne && maschera[gy * colonne + vx] === valore) risultato = valore;
+        }
+        orizzontale[gy * colonne + gx] = risultato;
+      }
+    }
+    const finale = new Uint8Array(maschera.length);
+    for (let gy = 0; gy < righe; gy += 1) {
+      for (let gx = 0; gx < colonne; gx += 1) {
+        let risultato = orizzontale[gy * colonne + gx];
+        for (let d = -raggio; d <= raggio && risultato !== valore; d += 1) {
+          const vy = gy + d;
+          if (vy >= 0 && vy < righe && orizzontale[vy * colonne + gx] === valore) risultato = valore;
+        }
+        finale[gy * colonne + gx] = risultato;
+      }
+    }
+    return finale;
+  }
+
+  function cercaRetroUno(nero, griglia, colonne, righe, zx, zy) {
+    const pieno = new Uint8Array(griglia.length);
+    for (let cella = 0; cella < griglia.length; cella += 1) pieno[cella] = nero[cella] || griglia[cella] >= 0 ? 1 : 0;
+    const raggio = RETRO_UNO.cucitura;
+    const cucito = espandi(espandi(pieno, colonne, righe, raggio, 1), colonne, righe, raggio, 0);
+    const dentro = (cella) => cucito[cella] === 1;
+    const visto = new Uint8Array(griglia.length);
+    const pila = new Int32Array(griglia.length);
+    const totale = canvas.width * canvas.height;
+    let migliore = null;
+
+    for (let inizio = 0; inizio < griglia.length; inizio += 1) {
+      if (visto[inizio] || !dentro(inizio)) continue;
+
+      const celle = [];
+      const conti = { neri: 0, rossi: 0, gialli: 0, verdiBlu: 0 };
+      let tocca = false;
+      let minX = Infinity;
+      let maxX = -Infinity;
+      let minY = Infinity;
+      let maxY = -Infinity;
+      let cima = 0;
+      pila[cima++] = inizio;
+      visto[inizio] = 1;
+
+      while (cima > 0) {
+        const cella = pila[--cima];
+        const gx = cella % colonne;
+        const gy = (cella - gx) / colonne;
+        const x = zx + gx * PASSO;
+        const y = zy + gy * PASSO;
+        celle.push(x, y);
+        if (nero[cella]) conti.neri += 1;
+        else if (griglia[cella] === 0) conti.rossi += 1;
+        else if (griglia[cella] === 1) conti.gialli += 1;
+        else if (griglia[cella] >= 2) conti.verdiBlu += 1;
+        if (gx === 0 || gy === 0 || gx === colonne - 1 || gy === righe - 1) tocca = true;
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
+
+        const vicini = [
+          gx > 0 ? cella - 1 : -1,
+          gx < colonne - 1 ? cella + 1 : -1,
+          gy > 0 ? cella - colonne : -1,
+          gy < righe - 1 ? cella + colonne : -1,
+        ];
+        for (const v of vicini) {
+          if (v >= 0 && !visto[v] && dentro(v)) {
+            visto[v] = 1;
+            pila[cima++] = v;
+          }
+        }
+      }
+
+      const n = celle.length / 2;
+      const area = (n * PASSO * PASSO) / totale;
+      if (tocca || area < RETRO_UNO.areaMin || area > RETRO_UNO.areaMax) continue;
+      if (conti.neri / n < RETRO_UNO.quotaNero || conti.rossi / n < RETRO_UNO.quotaRosso) continue;
+      if (conti.verdiBlu / n > RETRO_UNO.quotaVerdeBlu) continue;
+      if (migliore && n <= migliore.area) continue;
+
+      const forma = misuraForma(celle);
+      if (forma.riempimento < RETRO_UNO.riempimento) continue;
+      if (forma.allungamento < RETRO.allungamentoMin || forma.allungamento > RETRO.allungamentoMax) continue;
+
+      migliore = {
+        colore: 'nessuno',
+        retro: true,
+        cx: (minX + maxX) / 2,
+        cy: (minY + maxY) / 2,
+        lato: Math.hypot(maxX - minX, maxY - minY) + PASSO * 2,
+        area: n,
+        pezzi: 1,
+      };
+    }
+    return migliore;
   }
 
   function cercaCambioColore(griglia, colonne, righe, zx, zy) {
@@ -476,7 +722,38 @@
         }
       }
     }
+
+    const puntiDueCarte = disegnaDueCarte(ctxFoglio, lato);
+    const dueCarte = [];
+    for (let gradi = 0; gradi < 360; gradi += PASSO_ROTAZIONE) {
+      dueCarte.push(normalizza(puntiDueCarte, (gradi * Math.PI) / 180));
+    }
+    modelliDueCarte = dueCarte;
     modelli = nuovi;
+  }
+
+  function disegnaDueCarte(ctxFoglio, lato) {
+    const { larghezza, altezza, raggio, posizioni } = DUE_CARTE;
+    const totaleX = Math.max(...posizioni.map(([x]) => x)) + larghezza;
+    const totaleY = Math.max(...posizioni.map(([, y]) => y)) + altezza;
+    const scala = (lato * 0.8) / Math.max(totaleX, totaleY);
+
+    ctxFoglio.clearRect(0, 0, lato, lato);
+    ctxFoglio.save();
+    ctxFoglio.translate((lato - totaleX * scala) / 2, (lato - totaleY * scala) / 2);
+    ctxFoglio.scale(scala, scala);
+    ctxFoglio.fillStyle = '#000';
+    for (const [x, y] of posizioni) {
+      ctxFoglio.beginPath();
+      ctxFoglio.roundRect(x, y, larghezza, altezza, raggio);
+      ctxFoglio.fill();
+    }
+    ctxFoglio.restore();
+
+    const { data } = ctxFoglio.getImageData(0, 0, lato, lato);
+    const maschera = new Uint8Array(lato * lato);
+    for (let i = 0; i < maschera.length; i += 1) maschera[i] = data[i * 4 + 3] > 128 ? 1 : 0;
+    return puntiDi(maschera, lato);
   }
 
   function somiglianza(a, b) {
@@ -489,6 +766,45 @@
     return unione ? comune / unione : 0;
   }
 
+  function pienezza(punti) {
+    const lista = [];
+    for (let i = 0; i < punti.length; i += 2) lista.push([punti[i], punti[i + 1]]);
+    lista.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    if (lista.length < 3) return 0;
+
+    const svolta = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const sotto = [];
+    for (const p of lista) {
+      while (sotto.length >= 2 && svolta(sotto[sotto.length - 2], sotto[sotto.length - 1], p) <= 0) sotto.pop();
+      sotto.push(p);
+    }
+    const sopra = [];
+    for (let i = lista.length - 1; i >= 0; i -= 1) {
+      const p = lista[i];
+      while (sopra.length >= 2 && svolta(sopra[sopra.length - 2], sopra[sopra.length - 1], p) <= 0) sopra.pop();
+      sopra.push(p);
+    }
+    const bordo = sotto.slice(0, -1).concat(sopra.slice(0, -1));
+
+    let area = 0;
+    for (let i = 0; i < bordo.length; i += 1) {
+      const [x1, y1] = bordo[i];
+      const [x2, y2] = bordo[(i + 1) % bordo.length];
+      area += x1 * y2 - x2 * y1;
+    }
+    const perimetro = bordo.reduce((somma, p, i) => {
+      const q = bordo[(i + 1) % bordo.length];
+      return somma + Math.hypot(q[0] - p[0], q[1] - p[1]);
+    }, 0);
+    return lista.length / (Math.abs(area) / 2 + perimetro / 2 + 1);
+  }
+
+  function sembraDueCarte(punti) {
+    if (!modelliDueCarte.length || pienezza(punti) < DUE_CARTE_PIENEZZA) return false;
+    const maschera = normalizza(punti, 0);
+    return modelliDueCarte.some((modello) => somiglianza(maschera, modello) >= DUE_CARTE_SOMIGLIANZA);
+  }
+
   function eSlash(simbolo) {
     return (
       simbolo.pezzi === 1 &&
@@ -499,10 +815,12 @@
 
   function riconosci(simbolo) {
     if (simbolo.cambiaColore) return 'cambia';
+    if (simbolo.retro) return 'retro';
     if (eSlash(simbolo)) return '/';
 
     const punti = puntiDi(ritagliaSimbolo(simbolo), LATO_LETTURA);
     if (punti.length < 40) return null;
+    if (sembraDueCarte(punti)) return LETTURA_DUE_CARTE;
     const maschera = normalizza(punti, 0);
 
     const migliori = new Map();
@@ -555,7 +873,7 @@
   }
 
   function contaBuchi(simbolo) {
-    if (simbolo.cambiaColore) return 0;
+    if (simbolo.cambiaColore || simbolo.retro) return 0;
     const lato = LATO_LETTURA;
     let forma = ritagliaSimbolo(simbolo);
     forma = allarga(allarga(forma, lato, 1), lato, 1);
@@ -606,15 +924,17 @@
     if (ultimaGiocata && adesso - ultimaGiocata.tempo < PAUSA_TURNI) return;
     disturbato = false;
 
+    const forme = [testo, ultimaGiocata?.testo];
+    const stessiBuchi = ultimaGiocata?.buchi === buchiCarta && !forme.includes(LETTURA_DUE_CARTE);
     const stessa =
-      ultimaGiocata?.simbolo.colore === simbolo.colore &&
-      (ultimaGiocata.testo === testo || ultimaGiocata.buchi === buchiCarta);
+      ultimaGiocata?.simbolo.colore === simbolo.colore && (ultimaGiocata.testo === testo || stessiBuchi);
     if (stessa) return;
 
     ultimaGiocata = { simbolo, testo, buchi: buchiCarta, tempo: adesso };
     console.debug(`[UniWebcam] carta ${testo} ${simbolo.colore}`);
-    const colore = simbolo.cambiaColore ? null : simbolo.colore;
-    window.dispatchEvent(new CustomEvent('carta-rilevata', { detail: { carta: testo, colore } }));
+    const colore = simbolo.cambiaColore || simbolo.retro ? null : simbolo.colore;
+    const carta = testo === LETTURA_DUE_CARTE ? '+2' : testo;
+    window.dispatchEvent(new CustomEvent('carta-rilevata', { detail: { carta, colore } }));
   }
 
   function ciclo() {
@@ -634,7 +954,7 @@
     if (movimento > QUOTA_MOVIMENTO) disturbato = true;
 
     if (simbolo && conteggio >= FOTOGRAMMI_STABILI) {
-      if (!simbolo.cambiaColore) coloreStabile = simbolo.colore;
+      if (!simbolo.cambiaColore && !simbolo.retro) coloreStabile = simbolo.colore;
       if (modelli && disturbato) {
         voti = [...voti, riconosci(simbolo)].slice(-VOTI);
         buchi = [...buchi, contaBuchi(simbolo)].slice(-VOTI);

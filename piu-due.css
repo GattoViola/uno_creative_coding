@@ -1,0 +1,92 @@
+.piu-due {
+  --durata-piu-due: 1.6s;
+  --margine: min(5.3vw, 5.3vh);
+  --lato-piu-due: min(50vw - 2 * var(--margine), 100dvh - 2 * var(--margine));
+  --colore-guida-piu-due: rgb(255 255 255 / 0.75);
+
+  position: fixed;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+}
+
+.piu-due .quadrato-piu-due {
+  position: absolute;
+  left: var(--piu-due-x, calc(50vw + var(--margine) + (50vw - 2 * var(--margine) - var(--lato-piu-due)) / 2));
+  top: var(--piu-due-y, calc(var(--margine) + (100dvh - 2 * var(--margine) - var(--lato-piu-due)) / 2));
+  width: var(--piu-due-larghezza, var(--lato-piu-due));
+  height: var(--piu-due-altezza, var(--lato-piu-due));
+  overflow: hidden;
+  border-radius: var(--piu-due-raggio, calc(var(--lato-piu-due) / 100));
+  background: var(--accento);
+  opacity: 0;
+}
+
+.piu-due.attiva .quadrato-piu-due {
+  animation: lampo-piu-due var(--durata-piu-due) ease-in-out forwards;
+}
+
+.piu-due svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.piu-due .guide-piu-due line {
+  stroke: var(--colore-guida-piu-due);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  shape-rendering: crispEdges;
+}
+
+.piu-due .metriche-piu-due text {
+  font-family: var(--carattere);
+  font-size: 25px;
+  font-weight: 450;
+  fill: rgb(255 255 255 / 0.9);
+}
+
+.piu-due .metriche-piu-due .valore {
+  text-anchor: end;
+}
+
+.piu-due .tratto {
+  fill: var(--bianco);
+}
+
+.piu-due .cifra-piu-due {
+  font-family: var(--carattere);
+  font-weight: 500;
+  font-style: normal;
+  font-kerning: none;
+  fill: var(--bianco);
+}
+
+@keyframes lampo-piu-due {
+  0% {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+
+  18% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  72% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .piu-due.attiva .quadrato-piu-due {
+    animation: none;
+    opacity: 1;
+  }
+}

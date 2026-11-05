@@ -11,6 +11,8 @@
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="intro.css" />
     <link rel="stylesheet" href="cambio.css" />
+    <link rel="stylesheet" href="finale.css" />
+    <link rel="stylesheet" href="piu-due.css" />
   </head>
 
   <body>
@@ -57,10 +59,84 @@
       </div>
     </div>
 
+    <div class="piu-due" id="piu-due" aria-hidden="true" hidden>
+      <div class="quadrato-piu-due">
+        <svg viewBox="-181 -1106 1487 1487" preserveAspectRatio="xMidYMid slice">
+          <g class="guide-piu-due">
+            <line x1="-181" x2="1306" y1="-963" y2="-963" />
+            <line x1="-181" x2="1306" y1="-726" y2="-726" />
+            <line x1="-181" x2="1306" y1="-516" y2="-516" />
+            <line x1="-181" x2="1306" y1="0" y2="0" />
+            <line x1="-181" x2="1306" y1="237" y2="237" />
+            <line x1="0" x2="0" y1="-1106" y2="381" />
+            <line x1="980" x2="980" y1="-1106" y2="381" />
+          </g>
+          <g class="metriche-piu-due">
+            <text x="-151" y="-932">Typo Ascender</text>
+            <text class="valore" x="1257" y="-932">963</text>
+            <text x="-151" y="-695">Cap Height</text>
+            <text class="valore" x="1257" y="-695">726</text>
+            <text x="-151" y="-485">x-Height</text>
+            <text class="valore" x="1257" y="-485">516</text>
+            <text x="-151" y="31">Baseline</text>
+            <text class="valore" x="1257" y="31">0</text>
+            <text x="-151" y="268">Typo Descender</text>
+            <text class="valore" x="1257" y="268">-237</text>
+          </g>
+          <rect class="tratto" x="0" y="-307" width="492" height="79" rx="39.5" />
+          <rect class="tratto" x="206" y="-513" width="81" height="513" rx="40.5" />
+          <text class="cifra-piu-due" x="492" y="0" font-size="1000">2</text>
+        </svg>
+      </div>
+    </div>
+
+    <div class="finale" id="finale" role="region" aria-label="Game summary" hidden>
+      <div class="pannello">
+        <svg class="disegno-finale" aria-hidden="true">
+          <defs>
+            <clipPath id="finale-rivela">
+              <rect class="rivela" x="0" y="0" width="0" height="0" />
+            </clipPath>
+            <clipPath id="finale-rivela-sopra">
+              <rect class="rivela-sopra" x="0" y="0" width="0" height="0" />
+            </clipPath>
+          </defs>
+          <g class="guide">
+            <line data-guida="maiuscole-sopra" />
+            <line data-guida="base-sopra" />
+            <line data-guida="maiuscole" />
+            <line data-guida="minuscole" />
+            <line data-guida="base" />
+            <line data-guida="discendenti" />
+            <line data-guida="sinistra" />
+            <line data-guida="colonna" />
+            <line data-guida="destra" />
+          </g>
+          <g class="parola-sopra">
+            <text class="titolo-finale" data-titolo="iniziale" x="0" y="0">UNI</text>
+            <text class="titolo-finale" data-titolo="sopra" x="0" y="0" clip-path="url(#finale-rivela-sopra)"></text>
+          </g>
+          <g class="parola-finale">
+            <text class="titolo-finale" data-titolo="vincitore" x="0" y="0" clip-path="url(#finale-rivela)"></text>
+          </g>
+        </svg>
+        <section class="dati-finale">
+          <div class="colonna-finale" data-colonna="partita"></div>
+          <div class="colonna-finale" data-colonna="giocatori"></div>
+        </section>
+      </div>
+    </div>
+
     <div class="pagina" id="app-shell">
       <div class="webcam" id="webcam">
         <video id="video" autoplay playsinline muted width="640" height="480"></video>
         <canvas id="canvas" width="640" height="480"></canvas>
+        <svg
+          class="mani-webcam"
+          id="mani-webcam"
+          viewBox="0 0 640 480"
+          preserveAspectRatio="xMidYMid slice"
+          aria-hidden="true"></svg>
       </div>
 
       <div class="zona-dashboard">
@@ -316,6 +392,8 @@
     <script src="voce.js" defer></script>
     <script src="intro.js" defer></script>
     <script src="cambio.js" defer></script>
+    <script src="finale.js" defer></script>
+    <script src="piu-due.js" defer></script>
     <script src="script.js" defer></script>
   </body>
 </html>
