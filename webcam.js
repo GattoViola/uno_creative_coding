@@ -24,10 +24,11 @@
   const PAUSA_TURNI = 1500;
   const BUCO_MIN = 15;
 
-  const CAMBIO_COLORE_MIN = 0.004;
+  const CAMBIO_COLORE_MIN = 0.0012;
   const CAMBIO_COLORE_VICINANZA = 0.9;
   const CAMBIO_COLORE_QUOTA = 0.15;
   const CAMBIO_COLORE_CONTATTO = 3;
+  const CAMBIO_COLORE_CANDIDATE = 4;
 
   const SLASH_ALLUNGAMENTO = 8;
   const SLASH_RIEMPIMENTO = 0.75;
@@ -172,14 +173,13 @@
   function cercaCambioColore(griglia, colonne, righe, zx, zy) {
     const gruppo = new Int32Array(griglia.length);
     const pila = new Int32Array(griglia.length);
-    const macchie = [null, null, null, null];
-    let ultimoGruppo = 0;
+    const macchie = [null];
 
     for (let inizio = 0; inizio < griglia.length; inizio += 1) {
       const colore = griglia[inizio];
       if (colore < 0 || gruppo[inizio]) continue;
 
-      const numero = ++ultimoGruppo;
+      const numero = macchie.length;
       let n = 0;
       let sx = 0;
       let sy = 0;
@@ -209,21 +209,41 @@
         }
       }
 
-      if (!macchie[colore] || n > macchie[colore].n) macchie[colore] = { numero, n, x: sx / n, y: sy / n };
+      macchie.push({ numero, colore, n, x: sx / n, y: sy / n, vicine: new Set() });
     }
 
     const minimo = (CAMBIO_COLORE_MIN * canvas.width * canvas.height) / (PASSO * PASSO);
-    if (macchie.some((macchia) => !macchia || macchia.n < minimo)) return null;
+    const perColore = COLORI.map((_, colore) =>
+      macchie
+        .filter((macchia) => macchia && macchia.colore === colore && macchia.n >= minimo)
+        .sort((a, b) => b.n - a.n)
+        .slice(0, CAMBIO_COLORE_CANDIDATE),
+    );
+    if (perColore.some((lista) => !lista.length)) return null;
 
-    const area = macchie.reduce((somma, macchia) => somma + macchia.n, 0);
-    if (macchie.some((macchia) => macchia.n < area * CAMBIO_COLORE_QUOTA)) return null;
+    const candidata = new Uint8Array(macchie.length);
+    perColore.flat().forEach((macchia) => (candidata[macchia.numero] = 1));
+    segnaContatti(macchie, candidata, gruppo, colonne, righe);
 
+    let migliore = null;
+    for (const r of perColore[0]) {
+      for (const y of perColore[1]) {
+        for (const g of perColore[2]) {
+          for (const b of perColore[3]) {
+            const quattro = [r, y, g, b];
+            const area = r.n + y.n + g.n + b.n;
+            if (migliore && area <= migliore.area) continue;
+            if (sembraCambioColore(quattro, area)) migliore = { quattro, area };
+          }
+        }
+      }
+    }
+    if (!migliore) return null;
+
+    const { quattro, area } = migliore;
     const raggio = Math.sqrt(area / Math.PI);
-    const cx = macchie.reduce((somma, macchia) => somma + macchia.x, 0) / macchie.length;
-    const cy = macchie.reduce((somma, macchia) => somma + macchia.y, 0) / macchie.length;
-    if (macchie.some((macchia) => Math.hypot(macchia.x - cx, macchia.y - cy) > raggio * CAMBIO_COLORE_VICINANZA)) return null;
-    if (!macchieVicine(macchie, gruppo, griglia, colonne, righe)) return null;
-
+    const cx = quattro.reduce((somma, macchia) => somma + macchia.x, 0) / quattro.length;
+    const cy = quattro.reduce((somma, macchia) => somma + macchia.y, 0) / quattro.length;
     return {
       colore: 'tutti',
       cambiaColore: true,
@@ -231,34 +251,44 @@
       cy: zy + cy * PASSO,
       lato: raggio * 2 * PASSO,
       area,
-      pezzi: macchie.length,
+      pezzi: quattro.length,
     };
   }
 
-  function macchieVicine(macchie, gruppo, griglia, colonne, righe) {
-    const contatti = macchie.map(() => new Set());
+  function segnaContatti(macchie, candidata, gruppo, colonne, righe) {
     const passi = [];
     for (let d = 1; d <= CAMBIO_COLORE_CONTATTO; d += 1) passi.push([d, 0], [0, d], [d, d], [d, -d]);
 
     for (let gy = 0; gy < righe; gy += 1) {
       for (let gx = 0; gx < colonne; gx += 1) {
-        const cella = gy * colonne + gx;
-        const a = griglia[cella];
-        if (a < 0 || gruppo[cella] !== macchie[a].numero) continue;
+        const a = gruppo[gy * colonne + gx];
+        if (!candidata[a]) continue;
 
         for (const [dx, dy] of passi) {
           const vx = gx + dx;
           const vy = gy + dy;
           if (vx >= colonne || vy < 0 || vy >= righe) continue;
-          const vicina = vy * colonne + vx;
-          const b = griglia[vicina];
-          if (b < 0 || b === a || gruppo[vicina] !== macchie[b].numero) continue;
-          contatti[a].add(b);
-          contatti[b].add(a);
+          const b = gruppo[vy * colonne + vx];
+          if (!candidata[b] || b === a || macchie[b].colore === macchie[a].colore) continue;
+          macchie[a].vicine.add(b);
+          macchie[b].vicine.add(a);
         }
       }
     }
-    return contatti.every((altri) => altri.size >= 2);
+  }
+
+  function sembraCambioColore(quattro, area) {
+    if (quattro.some((macchia) => macchia.n < area * CAMBIO_COLORE_QUOTA)) return false;
+
+    const toccate = quattro.every(
+      (macchia) => quattro.filter((altra) => macchia.vicine.has(altra.numero)).length >= 2,
+    );
+    if (!toccate) return false;
+
+    const raggio = Math.sqrt(area / Math.PI);
+    const cx = quattro.reduce((somma, macchia) => somma + macchia.x, 0) / quattro.length;
+    const cy = quattro.reduce((somma, macchia) => somma + macchia.y, 0) / quattro.length;
+    return quattro.every((macchia) => Math.hypot(macchia.x - cx, macchia.y - cy) <= raggio * CAMBIO_COLORE_VICINANZA);
   }
 
   function descriviGruppo(gruppo) {
