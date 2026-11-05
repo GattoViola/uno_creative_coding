@@ -10,6 +10,7 @@
     <link rel="preload" href="font/Unisoft77LLVarSupsi-[wght].woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="intro.css" />
+    <link rel="stylesheet" href="cambio.css" />
   </head>
 
   <body>
@@ -27,6 +28,34 @@
         <p class="text weight-6"><span class="italic">Unisoft77</span></p>
       </div>
     </template>
+
+    <div class="cambio-colore" id="cambio-colore" aria-hidden="true" hidden>
+      <div class="quadrato">
+        <div class="griglia">
+          <span class="linea verticale" style="--posizione: 8.3%"></span>
+          <span class="linea verticale" style="--posizione: 50%"></span>
+          <span class="linea verticale" style="--posizione: 91.7%"></span>
+          <span class="linea orizzontale" style="--posizione: 8.3%"></span>
+          <span class="linea orizzontale" style="--posizione: 50%"></span>
+          <span class="linea orizzontale" style="--posizione: 91.7%"></span>
+        </div>
+        <div class="cornice"></div>
+        <div class="frecce">
+          <div class="cella-freccia">
+            <svg class="freccia" viewBox="0 0 100 100"><path d="M15 15 L85 85 M85 20 L85 85 L20 85" /></svg>
+          </div>
+          <div class="cella-freccia">
+            <svg class="freccia" viewBox="0 0 100 100"><path d="M15 15 L85 85 M85 20 L85 85 L20 85" /></svg>
+          </div>
+          <div class="cella-freccia">
+            <svg class="freccia" viewBox="0 0 100 100"><path d="M15 15 L85 85 M85 20 L85 85 L20 85" /></svg>
+          </div>
+          <div class="cella-freccia">
+            <svg class="freccia" viewBox="0 0 100 100"><path d="M15 15 L85 85 M85 20 L85 85 L20 85" /></svg>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div class="pagina" id="app-shell">
       <div class="webcam" id="webcam">
@@ -286,6 +315,7 @@
     <script src="mani.js" defer></script>
     <script src="voce.js" defer></script>
     <script src="intro.js" defer></script>
+    <script src="cambio.js" defer></script>
     <script src="script.js" defer></script>
   </body>
 </html>

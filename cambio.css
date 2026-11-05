@@ -1,0 +1,142 @@
+.cambio-colore {
+  --durata-passo: 0.6s;
+  --durata-rotazione: 0.45s;
+  --durata-sfondo: 0.2s;
+  --lato-freccia: 66%;
+  --spessore-freccia: 12;
+  --colore-griglia: rgb(255 255 255 / 0.45);
+  --margine: min(5.3vw, 5.3vh);
+  --lato-cambio: min(50vw - 2 * var(--margine), 100dvh - 2 * var(--margine));
+
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+}
+
+.cambio-colore .quadrato {
+  position: absolute;
+  left: var(--cambio-x, calc(50vw + var(--margine) + (50vw - 2 * var(--margine) - var(--lato-cambio)) / 2));
+  top: var(--cambio-y, calc(var(--margine) + (100dvh - 2 * var(--margine) - var(--lato-cambio)) / 2));
+  width: var(--cambio-larghezza, var(--lato-cambio));
+  height: var(--cambio-altezza, var(--lato-cambio));
+  overflow: hidden;
+  border-radius: var(--cambio-raggio, calc(var(--lato-cambio) / 100));
+  background-color: var(--colore-rosso);
+  transition: background-color var(--durata-sfondo) ease-in-out;
+}
+
+.cambio-colore .quadrato[data-colore='giallo'] {
+  background-color: var(--colore-giallo);
+}
+
+.cambio-colore .quadrato[data-colore='verde'] {
+  background-color: var(--colore-verde);
+}
+
+.cambio-colore .quadrato[data-colore='blu'] {
+  background-color: var(--colore-blu);
+}
+
+.cambio-colore .griglia {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+.cambio-colore .linea {
+  position: absolute;
+  background: var(--colore-griglia);
+}
+
+.cambio-colore .verticale {
+  top: 0;
+  left: var(--posizione);
+  width: 1px;
+  height: 100%;
+}
+
+.cambio-colore .orizzontale {
+  top: var(--posizione);
+  left: 0;
+  width: 100%;
+  height: 1px;
+}
+
+.cambio-colore .cornice {
+  position: absolute;
+  inset: 8.3%;
+  z-index: 2;
+  border: 1px solid var(--colore-griglia);
+  animation: respiro-cornice var(--durata-passo) ease-in-out infinite;
+}
+
+.cambio-colore .frecce {
+  position: absolute;
+  inset: 8.3%;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.cambio-colore .cella-freccia {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.cambio-colore .freccia {
+  --partenza: 0deg;
+
+  flex-shrink: 0;
+  width: var(--lato-freccia);
+  height: var(--lato-freccia);
+  overflow: visible;
+  transform: rotate(calc(var(--partenza) + var(--passo, 0) * 90deg));
+  transition: transform var(--durata-rotazione) cubic-bezier(0.65, 0, 0.2, 1);
+}
+
+.cambio-colore .cella-freccia:nth-child(2) .freccia {
+  --partenza: 90deg;
+}
+
+.cambio-colore .cella-freccia:nth-child(3) .freccia {
+  --partenza: 180deg;
+}
+
+.cambio-colore .cella-freccia:nth-child(4) .freccia {
+  --partenza: 270deg;
+}
+
+.cambio-colore .freccia path {
+  fill: none;
+  stroke: var(--bianco);
+  stroke-width: var(--spessore-freccia);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@keyframes respiro-cornice {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cambio-colore .quadrato,
+  .cambio-colore .freccia {
+    transition: none;
+  }
+
+  .cambio-colore .cornice {
+    animation: none;
+  }
+}

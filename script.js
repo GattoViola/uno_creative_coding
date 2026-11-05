@@ -1025,12 +1025,14 @@ function scegliColore(colore) {
 async function aspettaColore() {
   if (finisciSceltaColore) return;
   document.documentElement.setAttribute('data-cambio-colore', '');
+  window.UniCambioColore?.apri();
   const scelta = new Promise((fine) => {
     finisciSceltaColore = fine;
   });
   window.UniVoce?.ascolta().then(scegliColore);
   const colore = await scelta;
   if (colore) UniDashboard.giocaCambioColore(colore);
+  window.UniCambioColore?.chiudi(colore);
 }
 
 addEventListener('carta-rilevata', (e) => {
@@ -1060,4 +1062,4 @@ addEventListener('keydown', (e) => {
   else if (/^[0-9/]$/.test(e.key)) UniDashboard.giocaCarta(e.key);
   else if (TASTI_COLORE[e.key.toLowerCase()]) UniDashboard.impostaColoreManuale(TASTI_COLORE[e.key.toLowerCase()]);
   else if (e.key === 'Escape') UniDashboard.azzeraPartita();
-}); 
+});
