@@ -43,8 +43,8 @@
     taccheRighello: 100,
     raggioPunti: 5,
     raggioAttivo: 9,
-    margine: 5,
-    onda: { periodi: 3, minimo: 315, massimo: 800, campioni: 240 },
+    margine: 12,
+    onda: { periodi: 2.5, minimo: 300, massimo: 900, campioni: 240 },
   };
 
   const SPAZIO_TRA_SIMBOLI = 70;
@@ -60,7 +60,7 @@
     distanzaLinee: 9,
   };
 
-  const STORICO_ESEMPIO = [300, 400, 500, 700, 800, 900];
+  const STORICO_ESEMPIO = [900, 800, 700, 500, 400, 300];
   const NAMESPACE_SVG = 'http://www.w3.org/2000/svg';
   const movimentoRidotto = window.matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -612,6 +612,7 @@
   const arrotonda = (numero) => Number(numero.toFixed(2));
 
   function costruisciGrafico() {
+    parti.animazioneOnda?.cancel();
     parti.contenuto?.remove();
     const contenuto = creaSvg('g', { class: 'contenuto-grafico' }, el.grafico);
     parti.contenuto = contenuto;
@@ -660,16 +661,7 @@
       creaSvg('line', { x1: x, x2: x, y1: GRAFICO.righelloAlto, y2: GRAFICO.righelloBasso }, tacche);
     }
 
-    const { periodi, minimo, massimo, campioni } = GRAFICO.onda;
-    const centro = (minimo + massimo) / 2;
-    const ampiezza = (massimo - minimo) / 2;
-    let percorso = '';
-    for (let i = 0; i <= campioni; i += 1) {
-      const t = i / campioni;
-      const valore = centro - ampiezza * Math.cos(2 * Math.PI * periodi * t);
-      percorso += `${i === 0 ? 'M' : 'L'}${arrotonda(xPer(t))} ${arrotonda(yPer(valore))}`;
-    }
-    creaSvg('path', { class: 'onda', d: percorso, 'aria-hidden': 'true' }, contenuto);
+    parti.onda = creaSvg('path', { class: 'onda', 'aria-hidden': 'true' }, contenuto);
 
     parti.lineaPeso = creaSvg('path', { class: 'linea-peso', 'aria-hidden': 'true' }, contenuto);
     parti.puntiPeso = creaSvg('g', { class: 'punti-peso', 'aria-hidden': 'true' }, contenuto);
@@ -788,9 +780,37 @@
   function disegnaStoricoPeso() {
     if (!parti.lineaPeso) return;
     const ultimo = Math.max(storicoPeso.length - 1, 1);
-    const punti = storicoPeso.map((peso, i) => ({ x: xPer(i / ultimo), y: yPer(peso) }));
+    const punti = storicoPeso.map((peso, i) => ({
+      x: xPer(storicoPeso.length === 1 ? 1 : i / ultimo),
+      y: yPer(peso),
+    }));
     const attivo = storicoPeso.lastIndexOf(stato.peso);
+    const pesoOnda = limita(stato.peso, GRAFICO.valoreMin, GRAFICO.valoreMax);
+    const { minimo, massimo, periodi } = GRAFICO.onda;
+    const centroOnda = (minimo + massimo) / 2;
+    const ampiezzaOnda = (massimo - minimo) / 2;
+    const faseIniziale = Math.acos(limita((centroOnda - pesoOnda) / ampiezzaOnda, -1, 1));
+    let percorsoOnda = '';
+    for (let i = 0; i <= GRAFICO.onda.campioni; i += 1) {
+      const t = i / GRAFICO.onda.campioni;
+      const fase = faseIniziale - 2 * Math.PI * periodi * t;
+      const valore = centroOnda - ampiezzaOnda * Math.cos(fase);
+      percorsoOnda += `${i === 0 ? 'M' : 'L'}${arrotonda(xPer(1 - t))} ${arrotonda(yPer(valore))}`;
+    }
 
+    parti.onda.setAttribute('d', percorsoOnda);
+    const lunghezzaOnda = parti.onda.getTotalLength();
+    parti.onda.style.strokeDasharray = `${lunghezzaOnda} ${lunghezzaOnda}`;
+    parti.animazioneOnda?.cancel();
+    parti.onda.style.strokeDashoffset = String(lunghezzaOnda);
+    parti.animazioneOnda = parti.onda.animate(
+      [{ strokeDashoffset: lunghezzaOnda }, { strokeDashoffset: 0 }],
+      {
+        duration: movimentoRidotto.matches ? 0 : 500,
+        easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+        fill: 'forwards',
+      },
+    );
     parti.lineaPeso.setAttribute('d', curvaMorbida(punti));
     parti.puntiPeso.replaceChildren(
       ...punti.map((punto, i) =>
