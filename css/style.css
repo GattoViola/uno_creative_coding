@@ -1,6 +1,6 @@
 @font-face {
   font-family: 'Unisoft77';
-  src: url('font/Unisoft77LLVarSupsi-[wght].woff2') format('woff2');
+  src: url('../font/Unisoft77LLVarSupsi-[wght].woff2') format('woff2');
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
@@ -8,7 +8,7 @@
 
 @font-face {
   font-family: 'Unisoft77';
-  src: url('font/Unisoft77LLVarSupsi-Italic-[wght].woff2') format('woff2');
+  src: url('../font/Unisoft77LLVarSupsi-Italic-[wght].woff2') format('woff2');
   font-weight: 100 900;
   font-style: italic;
   font-display: swap;
@@ -608,7 +608,7 @@ canvas {
 }
 
 .grafico-glifo .glifo-grafico {
-  font-family: "Unisoft77", sans-serif;
+  font-family: 'Unisoft77', sans-serif;
 
   font-weight: var(--peso-lettera, 300);
   font-style: var(--stile-lettera, normal);
