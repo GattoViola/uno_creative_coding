@@ -589,3 +589,39 @@ canvas {
     animation: none;
   }
 }
+
+.colore-attuale {
+  position: relative;
+}
+
+.grafico-glifo {
+  position: absolute;
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+
+  overflow: visible;
+  pointer-events: none;
+
+  --intervallo-glifi: 800ms;
+}
+
+.grafico-glifo .glifo-grafico {
+  font-family: "Unisoft77", sans-serif;
+
+  font-weight: var(--peso-lettera, 300);
+  font-style: var(--stile-lettera, normal);
+
+  fill: currentColor;
+
+  opacity: 0;
+
+  transition:
+    opacity 250ms ease,
+    font-weight 300ms ease;
+}
+
+.grafico-glifo .glifo-grafico.visibile {
+  opacity: 1;
+}

@@ -77,6 +77,7 @@
     larghezza: trova('larghezza'),
     margineDestro: trova('margine-destro'),
     grafico: trova('weight-graph'),
+    graficoGlifo: trova('grafico-glifo'),
     descrizioneGrafico: trova('descrizione-grafico'),
     listeTurni: [trova('p1-numbers'), trova('p2-numbers')],
   };
@@ -439,6 +440,7 @@
       if (Number.isFinite(valore)) {
         stato.peso = Math.round(limita(valore, PESO_MIN, PESO_MAX));
         el.poster.style.setProperty('--peso-lettera', String(stato.peso));
+        el.graficoGlifo.style.setProperty('--peso-lettera', String(stato.peso));
         scriviTesto('glyph-weight', stato.peso);
         disegnaStoricoPeso();
       }
@@ -447,6 +449,10 @@
     if (corsivo !== undefined) {
       stato.corsivo = Boolean(corsivo);
       el.poster.style.setProperty('--stile-lettera', stato.corsivo ? 'italic' : 'normal');
+      el.graficoGlifo.style.setProperty(
+      '--stile-lettera',
+      stato.corsivo ? 'italic' : 'normal'
+      );
       document.documentElement.toggleAttribute('data-corsivo', stato.corsivo);
       scriviTesto('glyph-italic', testoOnOff(stato.corsivo));
     }
@@ -611,15 +617,27 @@
 
   const arrotonda = (numero) => Number(numero.toFixed(2));
 
+  function costruisciGlifiColore() {
+  el.graficoGlifo.replaceChildren();
+
+  parti.glifi = [0, 1].map(() =>
+    creaSvg('text', {
+      class: 'glifo-grafico',
+      'aria-hidden': 'true',
+      'text-anchor': 'middle'
+    }, el.graficoGlifo)
+  );
+
+  parti.glifi[glifoVisibile].classList.add('visibile');
+
+  impaginaGlifi();
+}
+
   function costruisciGrafico() {
     parti.animazioneOnda?.cancel();
     parti.contenuto?.remove();
     const contenuto = creaSvg('g', { class: 'contenuto-grafico' }, el.grafico);
     parti.contenuto = contenuto;
-
-    parti.glifi = [0, 1].map(() => creaSvg('text', { class: 'glifo-grafico', 'aria-hidden': 'true' }, contenuto));
-    parti.glifi[glifoVisibile].classList.add('visibile');
-    impaginaGlifi();
 
     const griglia = creaSvg('g', { class: 'griglia-grafico', 'aria-hidden': 'true' }, contenuto);
     const tacche = creaSvg('g', { class: 'tacche', 'aria-hidden': 'true' }, contenuto);
@@ -722,33 +740,29 @@
   }
 
   function mettiGlifo(elemento, glifo) {
-    const corpo = Number(elemento.getAttribute('font-size'));
-    const corsivo = getComputedStyle(elemento).fontStyle === 'italic';
-    strumentoMisura.font = fontCss(PESO_MEDIO_GLIFI, corsivo, corpo);
-    const misura = strumentoMisura.measureText(glifo);
-    const centro = (GRAFICO.sinistra + GRAFICO.destra) / 2;
-    const inchiostro = (misura.actualBoundingBoxRight - misura.actualBoundingBoxLeft) / 2;
+  elemento.textContent = glifo;
 
-    elemento.textContent = glifo;
-    elemento.setAttribute('text-anchor', 'middle');
-    elemento.setAttribute('x', arrotonda(centro + misura.width / 2 - inchiostro));
-  }
+  elemento.setAttribute('x', 200);
+  elemento.setAttribute('text-anchor', 'middle');
+}
 
   function impaginaGlifi() {
-    if (!parti.glifi) return;
+  if (!parti.glifi) return;
 
-    const mezzoMaiuscole = ALTEZZA_MAIUSCOLE / 2;
-    const metaSpazio = (GRAFICO.basso - GRAFICO.alto) * 0.47;
-    const metaGlifi = Math.max(estensioneGlifi.sopra - mezzoMaiuscole, mezzoMaiuscole + estensioneGlifi.sotto);
-    const corpo = (metaSpazio * UNITA_PER_EM) / metaGlifi;
-    const lineaDiBase = (GRAFICO.alto + GRAFICO.basso) / 2 + (mezzoMaiuscole * corpo) / UNITA_PER_EM;
+  const corpo = 280;
 
-    parti.glifi.forEach((elemento) => {
-      elemento.setAttribute('font-size', arrotonda(corpo));
-      elemento.setAttribute('y', arrotonda(lineaDiBase));
-    });
-    mettiGlifo(parti.glifi[glifoVisibile], glifiGrafico[indiceGlifo]);
-  }
+  parti.glifi.forEach((elemento) => {
+    elemento.setAttribute('font-size', corpo);
+    elemento.setAttribute('x', 200);
+    elemento.setAttribute('y', 200);
+    elemento.setAttribute('dominant-baseline', 'central');
+  });
+
+  mettiGlifo(
+    parti.glifi[glifoVisibile],
+    glifiGrafico[indiceGlifo]
+  );
+}
 
   function prossimoGlifo() {
     if (!parti.glifi) return;
@@ -1091,6 +1105,7 @@
   cambiaStile({ peso: stato.peso, corsivo: stato.corsivo });
   impostaStoricoPeso(STORICO_ESEMPIO);
   adattaGrafico();
+  costruisciGlifiColore();
   new ResizeObserver(adattaGrafico).observe(el.grafico);
 
   el.grafico.style.setProperty('--intervallo-glifi', `${INTERVALLO_GLIFI}ms`);
