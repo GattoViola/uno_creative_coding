@@ -3,7 +3,6 @@
   --curva-piu-due: cubic-bezier(0.65, 0, 0.35, 1);
   --margine: min(5.3vw, 5.3vh);
   --lato-piu-due: min(50vw - 2 * var(--margine), 100dvh - 2 * var(--margine));
-  --colore-guida-piu-due: rgb(255 255 255 / 0.75);
 
   position: fixed;
   inset: 0;
@@ -22,19 +21,15 @@
   background: var(--accento);
   opacity: 0;
   transform-origin: 0 0;
+  will-change: transform;
 }
 
 #piu-due .quadrato-piu-due {
-  animation-timing-function:
-    cubic-bezier(0.45, 0, 0.15, 1);
+  animation-timing-function: cubic-bezier(0.45, 0, 0.15, 1);
 }
 
 .piu-due.attiva .quadrato-piu-due {
   animation: zoom-piu-due var(--durata-piu-due) linear forwards;
-}
-
-.piu-due.attiva svg {
-  animation: contenuto-piu-due var(--durata-piu-due) linear forwards;
 }
 
 .piu-due svg {
@@ -43,39 +38,10 @@
   height: 100%;
 }
 
-.piu-due .guide-piu-due line {
-  stroke: var(--colore-guida-piu-due);
-  stroke-width: 1;
-  vector-effect: non-scaling-stroke;
-  shape-rendering: crispEdges;
-}
-
-.piu-due .metriche-piu-due text {
-  font-family: var(--carattere);
-  font-size: 25px;
-  font-weight: 450;
-  fill: rgb(255 255 255 / 0.9);
-}
-
-.piu-due .metriche-piu-due .valore {
-  text-anchor: end;
-}
-
-.piu-due .tratto {
-  fill: var(--bianco);
-}
-
-.piu-due .cifra-piu-due {
-  font-family: var(--carattere);
-  font-weight: 500;
-  font-style: normal;
-  font-kerning: none;
-  fill: var(--bianco);
-}
-
 @keyframes zoom-piu-due {
   0% {
     opacity: 1;
+    border-radius: var(--piu-due-raggio-da, var(--piu-due-raggio));
     transform: translate(var(--piu-due-da-x, 0), var(--piu-due-da-y, 0))
       scale(var(--piu-due-da-sx, 1), var(--piu-due-da-sy, 1));
     animation-timing-function: var(--curva-piu-due);
@@ -83,37 +49,27 @@
 
   25% {
     opacity: 1;
+    border-radius: var(--piu-due-raggio);
     transform: none;
   }
 
   75% {
     opacity: 1;
+    border-radius: var(--piu-due-raggio);
     transform: none;
     animation-timing-function: var(--curva-piu-due);
   }
 
   100% {
     opacity: 1;
+    border-radius: var(--piu-due-raggio-da, var(--piu-due-raggio));
     transform: translate(var(--piu-due-da-x, 0), var(--piu-due-da-y, 0))
       scale(var(--piu-due-da-sx, 1), var(--piu-due-da-sy, 1));
   }
 }
 
-@keyframes contenuto-piu-due {
-  0%,
-  100% {
-    opacity: 0;
-  }
-
-  12%,
-  88% {
-    opacity: 1;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .piu-due.attiva .quadrato-piu-due,
-  .piu-due.attiva svg {
+  .piu-due.attiva .quadrato-piu-due {
     animation: none;
     opacity: 1;
   }

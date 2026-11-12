@@ -1,21 +1,18 @@
 (() => {
   'use strict';
 
-  const FONT = 'Unisoft77';
-  const PESO_CIFRA = 500;
   const DURATA_RIDOTTA = 1000;
-  const SPAZIO_CIFRA = { x: 492, larghezza: 488, altezza: 726 };
 
   const schermata = document.getElementById('piu-due');
   if (!schermata) return;
 
   const quadrato = schermata.querySelector('.quadrato-piu-due');
-  const cifra = schermata.querySelector('.cifra-piu-due');
   const dashboard = document.getElementById('dashboard');
   const poster = document.getElementById('container-principale');
+  const disegnoPoster = document.getElementById('disegno-lettera');
   const movimentoRidotto = window.matchMedia('(prefers-reduced-motion: reduce)');
-  const misura = document.createElement('canvas').getContext('2d');
   let chiusura = null;
+  let partenza = 0;
 
   function allineaAllaDashboard() {
     if (!dashboard || schermata.hidden) return;
@@ -36,6 +33,21 @@
     schermata.style.setProperty('--piu-due-da-y', `${partenza.top - area.top}px`);
     schermata.style.setProperty('--piu-due-da-sx', partenza.width / area.width);
     schermata.style.setProperty('--piu-due-da-sy', partenza.height / area.height);
+    const raggio = parseFloat(getComputedStyle(poster).borderTopLeftRadius) || 0;
+    schermata.style.setProperty('--piu-due-raggio-da', `${raggio / (partenza.width / area.width)}px`);
+  }
+
+  function copiaDelPoster() {
+    if (!disegnoPoster) return;
+    const copia = disegnoPoster.cloneNode(true);
+    copia.querySelectorAll('[id]').forEach((elemento) => elemento.removeAttribute('id'));
+    copia.querySelector('title')?.remove();
+    ['id', 'role', 'aria-labelledby'].forEach((nome) => copia.removeAttribute(nome));
+    copia.setAttribute('aria-hidden', 'true');
+    for (const nome of poster.style) {
+      if (nome.startsWith('--')) copia.style.setProperty(nome, poster.style.getPropertyValue(nome));
+    }
+    quadrato.replaceChildren(copia);
   }
 
   if (dashboard) {
@@ -45,37 +57,30 @@
   }
   addEventListener('resize', allineaAllaDashboard);
 
-  function sistemaCifra() {
-    misura.font = `${PESO_CIFRA} 1000px "${FONT}"`;
-    const m = misura.measureText('2');
-    const larghezza = m.actualBoundingBoxLeft + m.actualBoundingBoxRight;
-    const altezza = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
-    if (!larghezza || !altezza) return;
-    const scala = Math.min(SPAZIO_CIFRA.larghezza / larghezza, SPAZIO_CIFRA.altezza / altezza);
-    cifra.setAttribute('font-size', (1000 * scala).toFixed(1));
-    cifra.setAttribute('x', (SPAZIO_CIFRA.x + m.actualBoundingBoxLeft * scala).toFixed(1));
-  }
-
-  document.fonts
-    .load(`${PESO_CIFRA} 100px "${FONT}"`, '2')
-    .then(sistemaCifra)
-    .catch(() => {});
-
   function nascondi() {
+    partenza += 1;
     clearTimeout(chiusura);
     schermata.classList.remove('attiva');
     schermata.hidden = true;
   }
 
-  function mostra() {
-    clearTimeout(chiusura);
-    schermata.classList.remove('attiva');
+  function avvia() {
     schermata.hidden = false;
     allineaAllaDashboard();
-    sistemaCifra();
+    copiaDelPoster();
     void quadrato.offsetWidth;
     schermata.classList.add('attiva');
     if (movimentoRidotto.matches) chiusura = setTimeout(nascondi, DURATA_RIDOTTA);
+  }
+
+  function mostra() {
+    nascondi();
+    const questa = partenza;
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        if (questa === partenza) avvia();
+      }),
+    );
   }
 
   quadrato.addEventListener('animationend', (e) => {

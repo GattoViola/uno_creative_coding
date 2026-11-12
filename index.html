@@ -60,34 +60,7 @@
     </div>
 
     <div class="piu-due" id="piu-due" aria-hidden="true" hidden>
-      <div class="quadrato-piu-due">
-        <svg viewBox="-181 -1106 1487 1487" preserveAspectRatio="xMidYMid slice">
-          <g class="guide-piu-due">
-            <line x1="-181" x2="1306" y1="-963" y2="-963" />
-            <line x1="-181" x2="1306" y1="-726" y2="-726" />
-            <line x1="-181" x2="1306" y1="-516" y2="-516" />
-            <line x1="-181" x2="1306" y1="0" y2="0" />
-            <line x1="-181" x2="1306" y1="237" y2="237" />
-            <line x1="0" x2="0" y1="-1106" y2="381" />
-            <line x1="980" x2="980" y1="-1106" y2="381" />
-          </g>
-          <g class="metriche-piu-due">
-            <text x="-151" y="-932">Typo Ascender</text>
-            <text class="valore" x="1257" y="-932">963</text>
-            <text x="-151" y="-695">Cap Height</text>
-            <text class="valore" x="1257" y="-695">726</text>
-            <text x="-151" y="-485">x-Height</text>
-            <text class="valore" x="1257" y="-485">516</text>
-            <text x="-151" y="31">Baseline</text>
-            <text class="valore" x="1257" y="31">0</text>
-            <text x="-151" y="268">Typo Descender</text>
-            <text class="valore" x="1257" y="268">-237</text>
-          </g>
-          <rect class="tratto" x="0" y="-307" width="492" height="79" rx="39.5" />
-          <rect class="tratto" x="206" y="-513" width="81" height="513" rx="40.5" />
-          <text class="cifra-piu-due" x="492" y="0" font-size="1000">2</text>
-        </svg>
-      </div>
+      <div class="quadrato-piu-due"></div>
     </div>
 
     <div class="finale" id="finale" role="region" aria-label="Game summary" hidden>
@@ -99,6 +72,9 @@
             </clipPath>
             <clipPath id="finale-rivela-sopra">
               <rect class="rivela-sopra" x="0" y="0" width="0" height="0" />
+            </clipPath>
+            <clipPath id="finale-etichetta">
+              <rect class="ritaglio-etichetta" x="0" y="0" width="0" height="0" />
             </clipPath>
           </defs>
           <g class="guide">
@@ -115,6 +91,13 @@
           <g class="parola-sopra">
             <text class="titolo-finale" data-titolo="iniziale" x="0" y="0">UNI</text>
             <text class="titolo-finale" data-titolo="sopra" x="0" y="0" clip-path="url(#finale-rivela-sopra)"></text>
+            <rect class="etichetta-sopra" x="0" y="0" width="0" height="0" />
+            <text
+              class="titolo-finale titolo-inverso"
+              data-titolo="inverso"
+              x="0"
+              y="0"
+              clip-path="url(#finale-etichetta)"></text>
           </g>
           <g class="parola-finale">
             <text class="titolo-finale" data-titolo="vincitore" x="0" y="0" clip-path="url(#finale-rivela)"></text>

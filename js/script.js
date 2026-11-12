@@ -1119,7 +1119,7 @@
   el.lettera.setAttribute('font-size', UNITA_PER_EM);
 
   cambiaStile({ peso: stato.peso, corsivo: stato.corsivo });
-  impostaStoricoPeso(STORICO_ESEMPIO);
+ impostaStoricoPeso([]);
   adattaGrafico();
   costruisciGlifiColore();
   new ResizeObserver(adattaGrafico).observe(el.grafico);

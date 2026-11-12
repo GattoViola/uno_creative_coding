@@ -3,6 +3,8 @@
   --lato-finale: min(50vw - 2 * var(--margine), 100dvh - 2 * var(--margine));
   --colore-guida: rgb(255 255 255 / 0.22);
   --durata-riga: 0.35s;
+  --durata-sfondo: 0.9s;
+  --curva-finale: cubic-bezier(0.76, 0, 0.24, 1);
 
   position: fixed;
   inset: 0;
@@ -20,6 +22,20 @@
   background: #000;
   color: var(--bianco);
   container-type: size;
+  transition: background-color var(--durata-sfondo) var(--curva-finale);
+}
+
+.finale.colorata .pannello {
+  background: var(--accento);
+}
+
+.finale .etichetta-sopra {
+  fill: var(--bianco);
+}
+
+.finale .titolo-finale.titolo-inverso {
+  fill: var(--accento);
+  transition: fill var(--durata-sfondo) var(--curva-finale);
 }
 
 .finale .disegno-finale {
@@ -114,7 +130,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .finale .riga-finale > * {
+  .finale .riga-finale > *,
+  .finale .pannello {
     transition: none;
   }
 }

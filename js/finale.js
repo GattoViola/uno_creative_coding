@@ -22,6 +22,8 @@
   const DURATA_CAMBIO = 500;
   const DURATA_SPOSTAMENTO = 700;
   const DURATA_GIOCATORE = 600;
+  const DURATA_ETICHETTA = 700;
+  const MARGINE_ETICHETTA = 0.35;
   const PAUSA_RIGHE = 65;
   const ATTESA_FONT_MAX = 1500;
 
@@ -42,6 +44,9 @@
   const titoloUni = schermata.querySelector('[data-titolo="iniziale"]');
   const titoloSopra = schermata.querySelector('[data-titolo="sopra"]');
   const titoloSotto = schermata.querySelector('[data-titolo="vincitore"]');
+  const titoloInverso = schermata.querySelector('[data-titolo="inverso"]');
+  const etichetta = schermata.querySelector('.etichetta-sopra');
+  const ritaglioEtichetta = schermata.querySelector('.ritaglio-etichetta');
   const rivelaSopra = schermata.querySelector('.rivela-sopra');
   const rivelaSotto = schermata.querySelector('.rivela');
   const dati = schermata.querySelector('.dati-finale');
@@ -65,6 +70,22 @@
   const limita = (valore, min = 0, max = 1) => Math.min(max, Math.max(min, valore));
   const morbido = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
   const uscita = (t) => 1 - (1 - t) ** 3;
+
+  function curvaBezier(x1, y1, x2, y2) {
+    const punto = (a, b, t) => 3 * a * t * (1 - t) ** 2 + 3 * b * t * t * (1 - t) + t ** 3;
+    return (x) => {
+      let basso = 0;
+      let alto = 1;
+      for (let i = 0; i < 24; i += 1) {
+        const t = (basso + alto) / 2;
+        if (punto(x1, x2, t) < x) basso = t;
+        else alto = t;
+      }
+      return punto(y1, y2, (basso + alto) / 2);
+    };
+  }
+
+  const allarga = curvaBezier(0.76, 0, 0.24, 1);
   const uguali = (testo, peso) => Array.from(testo, () => peso);
   const verso = (tempo, costante) => 1 - Math.exp(-tempo / costante);
 
@@ -115,6 +136,7 @@
     titoloUni.setAttribute('font-size', corpoSopra.toFixed(2));
     titoloUni.style.fontWeight = String(PESO_UNI);
     titoloSopra.setAttribute('font-size', corpoSopra.toFixed(2));
+    titoloInverso.setAttribute('font-size', corpoSopra.toFixed(2));
     titoloSotto.setAttribute('font-size', corpoSotto.toFixed(2));
     [
       [rivelaSotto, corpoSotto],
@@ -143,6 +165,7 @@
       sopra: misuraTesto(sopra.testo, sopra.medi, corpoSopra),
       baseSotto,
       baseSopra,
+      raggio: parseFloat(getComputedStyle(pannello).borderTopLeftRadius) || 0,
     };
   }
 
@@ -201,9 +224,34 @@
       pezzo.style.fontWeight = String(PESO_TITOLI);
     });
     rivelaSopra.setAttribute('width', (tra(0, parolaSopra.destra + corpoSopra * 0.05, stato.rivelaSopra) + corpoSopra).toFixed(1));
+    disegnaEtichetta(stato.etichetta, x, scala);
 
     lineaOrizzontale('maiuscole-sopra', stato.baseSopra - corpoSopra * scala * METRICHE.maiuscole);
     lineaOrizzontale('base-sopra', stato.baseSopra);
+  }
+
+  function disegnaEtichetta(apertura, spostamento, scala) {
+    const maiuscole = quadro.corpoSopra * METRICHE.maiuscole;
+    const bordo = maiuscole * MARGINE_ETICHETTA;
+    const sinistra = (quadro.larghezza * MARGINE - spostamento) / scala;
+    const destra = (quadro.larghezza * (1 - MARGINE) - spostamento) / scala;
+    const sopraBordo = -maiuscole - bordo;
+    const sottoBordo = bordo;
+    const larghezza = (destra - sinistra) * apertura;
+    const altezza = (sottoBordo - sopraBordo) * apertura;
+    const x = (sinistra + destra - larghezza) / 2;
+    const y = (sopraBordo + sottoBordo - altezza) / 2;
+    const raggio = Math.min(quadro.raggio / scala, larghezza / 2, altezza / 2);
+    [etichetta, ritaglioEtichetta].forEach((rettangolo) => {
+      rettangolo.setAttribute('x', x.toFixed(2));
+      rettangolo.setAttribute('y', y.toFixed(2));
+      rettangolo.setAttribute('width', larghezza.toFixed(2));
+      rettangolo.setAttribute('height', altezza.toFixed(2));
+      rettangolo.setAttribute('rx', raggio.toFixed(2));
+    });
+    const visibile = apertura > 0 ? '' : 'hidden';
+    etichetta.style.visibility = visibile;
+    titoloInverso.style.visibility = visibile;
   }
 
   function disegnaSotto(stato) {
@@ -243,6 +291,7 @@
     rivelaSopra: 0,
     pesiSotto: sotto.medi,
     rivelaSotto: 0,
+    etichetta: 0,
   });
 
   function statoRiduzione(t) {
@@ -264,7 +313,8 @@
     };
   }
 
-  const statoGiocatore = (t) => ({ ...statoSpostamento(1), rivelaSotto: morbido(t) });
+  const statoEtichetta = (t) => ({ ...statoSpostamento(1), etichetta: allarga(t) });
+  const statoGiocatore = (t) => ({ ...statoEtichetta(1), rivelaSotto: morbido(t) });
   const statoFermo = (pesiSotto) => ({ ...statoGiocatore(1), pesiSotto });
 
   const mano = { x: null, tempo: 0, spinta: 0, direzione: 1, storia: [], pesi: [] };
@@ -383,9 +433,13 @@
     const numero = ++giro;
     ultimoStato = null;
     sopra = preparaRiga(titoloSopra, TESTO_SOPRA);
+    preparaRiga(titoloInverso, TESTO_SOPRA).pezzi.forEach((pezzo) => {
+      pezzo.style.fontWeight = String(PESO_TITOLI);
+    });
     sotto = preparaRiga(titoloSotto, `Player ${riepilogo.vincitore}`);
     scriviDati(riepilogo);
     disegno.style.visibility = 'hidden';
+    schermata.classList.remove('colorata');
     schermata.hidden = false;
     document.documentElement.setAttribute('data-finale', '');
 
@@ -396,6 +450,7 @@
     disegno.style.visibility = '';
 
     if (movimentoRidotto.matches) {
+      schermata.classList.add('colorata');
       disegna(statoFermo(sotto.medi));
       mostraRighe(numero);
       return;
@@ -414,6 +469,10 @@
     await anima(numero, DURATA_SPOSTAMENTO, statoSpostamento);
     if (numero !== giro) return;
 
+    await anima(numero, DURATA_ETICHETTA, statoEtichetta);
+    if (numero !== giro) return;
+
+    schermata.classList.add('colorata');
     await anima(numero, DURATA_GIOCATORE, statoGiocatore);
     if (numero !== giro) return;
 
@@ -425,6 +484,7 @@
     giro += 1;
     ultimoStato = null;
     schermata.hidden = true;
+    schermata.classList.remove('colorata');
     document.documentElement.removeAttribute('data-finale');
   }
 
