@@ -6,6 +6,7 @@
 
   const PASSO = 2;
   const SATURAZIONE_MIN = 0.4;
+  const SATURAZIONE_MIN_VERDE = 0.25;
   const LUMINOSITA_MIN = 0.25;
   const SIMBOLO_MIN = 0.0005;
   const FOTOGRAMMI_STABILI = 10;
@@ -108,7 +109,8 @@
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
     const delta = max - min;
-    if (max / 255 < LUMINOSITA_MIN || delta / max < SATURAZIONE_MIN) return -1;
+    const saturazione = delta / max;
+    if (max / 255 < LUMINOSITA_MIN || saturazione < SATURAZIONE_MIN_VERDE) return -1;
 
     let tinta;
     if (max === r) tinta = ((g - b) / delta) % 6;
@@ -116,9 +118,10 @@
     else tinta = (r - g) / delta + 4;
     tinta = (tinta * 60 + 360) % 360;
 
+    if (tinta >= 75 && tinta < 170) return 2;
+    if (saturazione < SATURAZIONE_MIN) return -1;
     if (tinta < 20 || tinta >= 330) return 0;
     if (tinta < 75) return 1;
-    if (tinta < 170) return 2;
     if (tinta < 270) return 3;
     return -1;
   }
