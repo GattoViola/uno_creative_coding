@@ -241,8 +241,7 @@
     const altezza = (sottoBordo - sopraBordo) * apertura;
     const x = (sinistra + destra - larghezza) / 2;
     const y = (sopraBordo + sottoBordo - altezza) / 2;
-    const raggio = Math.min(quadro.raggio / scala, larghezza / 2, altezza / 2);
-    [etichetta, ritaglioEtichetta].forEach((rettangolo) => {
+    const raggio = Math.min(quadro.raggio * 2.5 / scala, larghezza / 2, altezza / 2);    [etichetta, ritaglioEtichetta].forEach((rettangolo) => {
       rettangolo.setAttribute('x', x.toFixed(2));
       rettangolo.setAttribute('y', y.toFixed(2));
       rettangolo.setAttribute('width', larghezza.toFixed(2));
@@ -442,6 +441,7 @@
     schermata.classList.remove('colorata');
     schermata.hidden = false;
     document.documentElement.setAttribute('data-finale', '');
+    window.UniSuoni?.finaleInizio();
 
     await fontPronto();
     if (numero !== giro) return;
@@ -473,6 +473,7 @@
     if (numero !== giro) return;
 
     schermata.classList.add('colorata');
+    window.UniSuoni?.finaleColore();
     await anima(numero, DURATA_GIOCATORE, statoGiocatore);
     if (numero !== giro) return;
 

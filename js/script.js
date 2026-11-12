@@ -80,7 +80,54 @@
     graficoGlifo: trova('grafico-glifo'),
     descrizioneGrafico: trova('descrizione-grafico'),
     listeTurni: [trova('p1-numbers'), trova('p2-numbers')],
+    logo: document.querySelector('.scritta-logo'),
   };
+
+  const LOGO = { pesoIniziale: 850, durata: 300, ritardo: 70, curva: 'ease' };
+
+  const lettereLogo = (() => {
+    if (!el.logo) return [];
+    const testo = el.logo.textContent.trim();
+    el.logo.setAttribute('aria-label', testo);
+    const riga = document.createElement('span');
+    riga.setAttribute('aria-hidden', 'true');
+    riga.append(
+      ...Array.from(testo, (lettera) => {
+        const pezzo = document.createElement('span');
+        pezzo.textContent = lettera;
+        pezzo.style.fontWeight = String(LOGO.pesoIniziale);
+        return pezzo;
+      }),
+    );
+    el.logo.replaceChildren(riga);
+    return [...riga.children];
+  })();
+
+  function pesoLogo(pezzo) {
+    return Number(getComputedStyle(pezzo).fontWeight) || LOGO.pesoIniziale;
+  }
+
+  function ondaLogo(pesoFinale) {
+    lettereLogo.forEach((pezzo, i) => {
+      const partenza = pesoLogo(pezzo);
+      pezzo.getAnimations().forEach((animazione) => animazione.cancel());
+      pezzo.style.fontWeight = String(pesoFinale);
+      if (movimentoRidotto.matches || partenza === pesoFinale) return;
+      pezzo.animate([{ fontWeight: partenza }, { fontWeight: pesoFinale }], {
+        duration: LOGO.durata,
+        delay: i * LOGO.ritardo,
+        easing: LOGO.curva,
+        fill: 'backwards',
+      });
+    });
+  }
+
+  function azzeraLogo() {
+    lettereLogo.forEach((pezzo) => {
+      pezzo.getAnimations().forEach((animazione) => animazione.cancel());
+      pezzo.style.fontWeight = String(LOGO.pesoIniziale);
+    });
+  }
 
   if (!el.dashboard || !el.lettera) {
     console.error('[UniDashboard] manca qualcosa nell\'HTML: controlla #dashboard e #testo-1.');
@@ -1110,6 +1157,8 @@
     partita.colore = null;
     partita.gradino = 0;
     partita.partenza = false;
+    window.UniSuoni?.nuovaPartita();
+    azzeraLogo();
     azzeraTurni();
     azzeraColore();
     cambiaStile({ peso: PESI[0][0], corsivo: false });
@@ -1143,6 +1192,8 @@
   window.UniDashboard = Object.freeze({
     giocaCarta,
     partitaIniziata: () => partita.partenza || partita.turno > 0,
+    pesoAttuale: () => stato.peso,
+    ondaLogo,
     giocaCambioColore,
     riepilogoPartita,
     azzeraPartita,
@@ -1179,18 +1230,31 @@ async function aspettaColore() {
   if (finisciSceltaColore) return;
   document.documentElement.setAttribute('data-cambio-colore', '');
   window.UniCambioColore?.apri();
+  window.UniSuoni?.cambiaColore();
   const scelta = new Promise((fine) => {
     finisciSceltaColore = fine;
   });
   window.UniVoce?.ascolta().then(scegliColore);
   const colore = await scelta;
-  if (colore) UniDashboard.giocaCambioColore(colore);
+  if (colore && UniDashboard.giocaCambioColore(colore)) {
+    window.UniSuoni?.carta(UniDashboard.pesoAttuale());
+    UniDashboard.ondaLogo(UniDashboard.pesoAttuale());
+  }
   window.UniCambioColore?.chiudi(colore);
 }
 
 function giocaCarta(carta, colore) {
   const giocata = UniDashboard.giocaCarta(carta, colore);
-  if (carta === '+2' && giocata === true) window.UniPiuDue?.mostra();
+  if (!giocata) return;
+  const peso = UniDashboard.pesoAttuale();
+  if (carta === '+2' && giocata === true) {
+    window.UniPiuDue?.mostra();
+    window.UniSuoni?.piuDue(peso);
+    UniDashboard.ondaLogo(peso);
+  } else {
+    window.UniSuoni?.carta(peso);
+    UniDashboard.ondaLogo(peso);
+  }
 }
 
 let cartaSulTavolo = null;
