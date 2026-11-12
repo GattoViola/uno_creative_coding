@@ -26,6 +26,11 @@
   will-change: transform;
 }
 
+#piu-due .quadrato-piu-due {
+  animation-timing-function:
+    cubic-bezier(0.45, 0, 0.15, 1);
+}
+
 .piu-due.attiva .quadrato-piu-due {
   animation: zoom-piu-due var(--durata-piu-due) linear forwards;
 }
