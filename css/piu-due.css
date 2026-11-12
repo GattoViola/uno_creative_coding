@@ -1,7 +1,6 @@
 .piu-due {
   --durata-piu-due: 1.8s;
-  --curva-apertura: cubic-bezier(0.16, 1, 0.3, 1);
-  --curva-chiusura: cubic-bezier(0.76, 0, 0.24, 1);
+  --curva-piu-due: cubic-bezier(0.65, 0, 0.35, 1);
   --margine: min(5.3vw, 5.3vh);
   --lato-piu-due: min(50vw - 2 * var(--margine), 100dvh - 2 * var(--margine));
   --colore-guida-piu-due: rgb(255 255 255 / 0.75);
@@ -23,7 +22,6 @@
   background: var(--accento);
   opacity: 0;
   transform-origin: 0 0;
-  will-change: transform;
 }
 
 #piu-due .quadrato-piu-due {
@@ -33,6 +31,10 @@
 
 .piu-due.attiva .quadrato-piu-due {
   animation: zoom-piu-due var(--durata-piu-due) linear forwards;
+}
+
+.piu-due.attiva svg {
+  animation: contenuto-piu-due var(--durata-piu-due) linear forwards;
 }
 
 .piu-due svg {
@@ -76,7 +78,7 @@
     opacity: 1;
     transform: translate(var(--piu-due-da-x, 0), var(--piu-due-da-y, 0))
       scale(var(--piu-due-da-sx, 1), var(--piu-due-da-sy, 1));
-    animation-timing-function: var(--curva-apertura);
+    animation-timing-function: var(--curva-piu-due);
   }
 
   25% {
@@ -87,13 +89,25 @@
   75% {
     opacity: 1;
     transform: none;
-    animation-timing-function: var(--curva-chiusura);
+    animation-timing-function: var(--curva-piu-due);
   }
 
   100% {
     opacity: 1;
     transform: translate(var(--piu-due-da-x, 0), var(--piu-due-da-y, 0))
       scale(var(--piu-due-da-sx, 1), var(--piu-due-da-sy, 1));
+  }
+}
+
+@keyframes contenuto-piu-due {
+  0%,
+  100% {
+    opacity: 0;
+  }
+
+  12%,
+  88% {
+    opacity: 1;
   }
 }
 
