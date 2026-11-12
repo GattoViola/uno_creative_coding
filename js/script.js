@@ -44,7 +44,7 @@
     raggioPunti: 5,
     raggioAttivo: 9,
     margine: 12,
-    onda: { periodi: 2.5, minimo: 300, massimo: 900, campioni: 240 },
+    onda: { campioniPerColonna: 48, durata: 500 },
   };
 
   const SPAZIO_TRA_SIMBOLI = 70;
@@ -791,40 +791,53 @@
     disegnaStoricoPeso();
   }
 
-  function disegnaStoricoPeso() {
-    if (!parti.lineaPeso) return;
-    const ultimo = Math.max(storicoPeso.length - 1, 1);
-    const punti = storicoPeso.map((peso, i) => ({
-      x: xPer(storicoPeso.length === 1 ? 1 : i / ultimo),
-      y: yPer(peso),
-    }));
-    const attivo = storicoPeso.lastIndexOf(stato.peso);
-    const pesoOnda = limita(stato.peso, GRAFICO.valoreMin, GRAFICO.valoreMax);
-    const { minimo, massimo, periodi } = GRAFICO.onda;
-    const centroOnda = (minimo + massimo) / 2;
-    const ampiezzaOnda = (massimo - minimo) / 2;
-    const faseIniziale = Math.acos(limita((centroOnda - pesoOnda) / ampiezzaOnda, -1, 1));
-    let percorsoOnda = '';
-    for (let i = 0; i <= GRAFICO.onda.campioni; i += 1) {
-      const t = i / GRAFICO.onda.campioni;
-      const fase = faseIniziale - 2 * Math.PI * periodi * t;
-      const valore = centroOnda - ampiezzaOnda * Math.cos(fase);
-      percorsoOnda += `${i === 0 ? 'M' : 'L'}${arrotonda(xPer(1 - t))} ${arrotonda(yPer(valore))}`;
+  function disegnaOnda(precedenti) {
+    const pesi = storicoPeso;
+    const campioni = GRAFICO.onda.campioniPerColonna;
+    const base = GRAFICO.valoreMin;
+    const punti = [];
+    for (let colonna = 0; colonna < pesi.length - 1; colonna += 1) {
+      for (let k = 0; k < campioni; k += 1) {
+        const t = k / campioni;
+        const cima = pesi[colonna] + (pesi[colonna + 1] - pesi[colonna]) * t;
+        const valore = base + ((cima - base) * (1 + Math.cos(2 * Math.PI * t))) / 2;
+        punti.push([xPer((colonna + t) / GRAFICO.colonne), yPer(valore)]);
+      }
+    }
+    if (pesi.length) punti.push([xPer((pesi.length - 1) / GRAFICO.colonne), yPer(pesi.at(-1))]);
+
+    parti.animazioneOnda?.cancel();
+    if (punti.length < 2) {
+      parti.onda.removeAttribute('d');
+      return;
     }
 
-    parti.onda.setAttribute('d', percorsoOnda);
-    const lunghezzaOnda = parti.onda.getTotalLength();
-    parti.onda.style.strokeDasharray = `${lunghezzaOnda} ${lunghezzaOnda}`;
-    parti.animazioneOnda?.cancel();
-    parti.onda.style.strokeDashoffset = String(lunghezzaOnda);
+    let lunghezza = 0;
+    let lunghezzaPrecedente = 0;
+    const finePrecedente = Math.max(precedenti - 1, 0) * campioni;
+    punti.forEach(([x, y], i) => {
+      if (i > 0) lunghezza += Math.hypot(x - punti[i - 1][0], y - punti[i - 1][1]);
+      if (i === finePrecedente) lunghezzaPrecedente = lunghezza;
+    });
+
+    parti.onda.setAttribute('d', punti.map(([x, y], i) => `${i ? 'L' : 'M'}${arrotonda(x)} ${arrotonda(y)}`).join(''));
+    parti.onda.style.strokeDasharray = `${lunghezza} ${lunghezza}`;
+    parti.onda.style.strokeDashoffset = '0';
+    if (movimentoRidotto.matches || lunghezzaPrecedente >= lunghezza) return;
     parti.animazioneOnda = parti.onda.animate(
-      [{ strokeDashoffset: lunghezzaOnda }, { strokeDashoffset: 0 }],
-      {
-        duration: movimentoRidotto.matches ? 0 : 500,
-        easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
-        fill: 'forwards',
-      },
+      [{ strokeDashoffset: lunghezza - lunghezzaPrecedente }, { strokeDashoffset: 0 }],
+      { duration: GRAFICO.onda.durata, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
     );
+  }
+
+  function disegnaStoricoPeso(precedenti = storicoPeso.length) {
+    if (!parti.lineaPeso) return;
+    const punti = storicoPeso.map((peso, i) => ({
+      x: xPer(i / GRAFICO.colonne),
+      y: yPer(peso),
+    }));
+    const attivo = storicoPeso.length - 1;
+    disegnaOnda(precedenti);
     parti.lineaPeso.setAttribute('d', curvaMorbida(punti));
     parti.puntiPeso.replaceChildren(
       ...punti.map((punto, i) =>
@@ -846,8 +859,11 @@
     if (!Array.isArray(pesi)) {
       return;
     }
-    storicoPeso = pesi.map(Number).filter(Number.isFinite);
-    disegnaStoricoPeso();
+    const nuovi = pesi.map(Number).filter(Number.isFinite);
+    const prima = nuovi.slice(0, -1).join();
+    const continua = prima === storicoPeso.join() || prima === storicoPeso.slice(1).join();
+    storicoPeso = nuovi;
+    disegnaStoricoPeso(continua ? nuovi.length - 1 : nuovi.length);
   }
 
   function trovaRiquadro(nome) {
